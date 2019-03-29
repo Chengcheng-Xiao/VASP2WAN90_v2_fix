@@ -50,9 +50,10 @@ LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 
 ## Notes
 
-*1. VASP is a commercial package, no source code are posted here.
+*1. VASP is a commercial package, so I cannot post any source code here. However, this fix is not a "black box", anyone with a legal copy of the VASP source code can easily see what I did.
 
 *2. The correctness of this patch has been checked against the WANNIER90 (version 1.2) on several cases.
 
-*2. This is just a trial fix, I have not (yet) get a clear picture the original intension of this interface. Any result obtained by this fix should be carefully checked by yourself. USE THIS AT YOUR OWN RISK.
+*2. Any result obtained by this patch should be carefully checked by yourself. USE THIS AT YOUR OWN RISK.
 
+*3. VASP2WANNIER90v2 interface has included `proj_s_` and `proj_s_qaxis_` variables but has yet implemented corresponding projection routines. So spinor-projections will be ignored even if they are defined in the `wannier90.win` file.
