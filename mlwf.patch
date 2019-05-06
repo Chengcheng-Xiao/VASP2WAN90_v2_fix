@@ -1,6 +1,6 @@
 diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 --- src/mlwf.F	2017-04-20 17:03:58.000000000 +0800
-+++ ../vasp.5.4.4_mod/src/mlwf.F	2019-05-05 10:42:12.000000000 +0800
++++ ../vasp.5.4.4_mod/src/mlwf.F	2019-05-06 15:08:07.000000000 +0800
 @@ -320,6 +320,9 @@
        REAL(q), ALLOCATABLE :: proj_x(:,:)
        REAL(q), ALLOCATABLE :: proj_zona(:)
@@ -11,7 +11,19 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        ! wannier90_run variables: input
        COMPLEX(q), ALLOCATABLE :: M_matrix(:,:,:,:,:)
        COMPLEX(q), ALLOCATABLE :: A_matrix(:,:,:,:)
-@@ -449,8 +452,17 @@
+@@ -329,6 +332,11 @@
+       INTEGER NI,MI,NK,NKP,ICNTR
+       INTEGER NKI,NKJ,ISP,ISPINOR,L,M,N,NP
+       INTEGER NEXCLB,NPROJ
++      ! CCX_2019-05-06: spin quantization local variables
++      LOGICAL spin_z_pos,spin_z_neg
++      COMPLEX(q) FAC(2)
++      REAL(q) :: eps6=0.000001_q
++      ! CCX_2019-05-06: end definition
+       REAL(q) POS(3)
+       REAL(q) KI(3),KJ(3)
+       INTEGER IDUM,IERR
+@@ -449,8 +457,17 @@
  
        ALLOCATE(proj_site(3,num_bands_tot),proj_l(num_bands_tot),proj_m(num_bands_tot), &
       &   proj_radial(num_bands_tot),proj_z(3,num_bands_tot),proj_x(3,num_bands_tot), &
@@ -30,7 +42,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        ! Only one node will do the actual work,
        ! otherwise all will write to wannier90.wout
-@@ -460,7 +472,12 @@
+@@ -460,7 +477,12 @@
       &                   kpt_latt,num_bands_tot,num_atoms,atom_symbols,atoms_cart, &
       &                   gamma_only,spinors,nntot,nnlist,nncell,num_bands,num_wann, &
       &                   proj_site,proj_l,proj_m,proj_radial,proj_z,proj_x,proj_zona, &
@@ -44,7 +56,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #endif
        ! Now communicate the output to the other nodes
        CALLMPI( M_sum_i(WDES%COMM,nntot,1) ) 
-@@ -476,6 +493,11 @@
+@@ -476,6 +498,11 @@
        CALLMPI( M_sum_d(WDES%COMM,proj_x,3*num_bands_tot) )
        CALLMPI( M_sum_d(WDES%COMM,proj_zona,num_bands_tot) )
        CALLMPI( M_sum_i(WDES%COMM,exclude_bands,num_bands_tot) )
@@ -56,7 +68,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        ALLOCATE(EXCLUDE_BAND(num_bands_tot))
        EXCLUDE_BAND=.FALSE. ; NEXCLB=0
-@@ -584,6 +606,11 @@
+@@ -584,6 +611,11 @@
        DO ISPINOR=1,WDES%NRSPINORS
        DO ICNTR=1,num_bands_tot
           IF (proj_l(ICNTR)==0.AND.proj_m(ICNTR)==0.AND.proj_radial(ICNTR)==0) CYCLE
@@ -68,19 +80,150 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           NPROJ=NPROJ+1
        ENDDO
        ENDDO
-@@ -648,6 +675,11 @@
-       spinor: DO ISPINOR=1,WDES%NRSPINORS
+@@ -643,11 +675,22 @@
+       ALLOCATE(ROTYLM((LMAX+1)**2,(LMAX+1)**2),HYBRID_ORBITAL((LMAX+1)**2))
+ 
+       NPROJ=0 
+-!     CALL START_TIMING("T1")
+       ! runs over all projector sites
+-      spinor: DO ISPINOR=1,WDES%NRSPINORS
        sites : DO ICNTR=1,num_bands_tot
           IF (proj_l(ICNTR)==0.AND.proj_m(ICNTR)==0.AND.proj_radial(ICNTR)==0) CYCLE sites
-+#ifdef VASP2WANNIER90v2
-+! CCX_2019-05-05: only calculate corresponding spin channel
-+         IF (WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==2) CYCLE sites
-+         IF (WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==1) CYCLE sites
-+#endif
++
++        IF ((abs(proj_s_qaxis(1,ICNTR)-0.0d0)<eps6).and.(abs(proj_s_qaxis(2,ICNTR)-0.0d0)<eps6) &
++           .and.(abs(proj_s_qaxis(3,ICNTR)-1.0d0)<eps6)) then
++           spin_z_pos=.true.
++        ELSEIF(abs(proj_s_qaxis(1,ICNTR)-0.0d0)<eps6.and.abs(proj_s_qaxis(2,ICNTR)-0.0d0)<eps6 &
++           .and.abs(proj_s_qaxis(3,ICNTR)+1.0d0)<eps6) then
++           spin_z_neg=.true.
++        ENDIF
++
++        IF (spin_z_pos .OR. spin_z_neg) THEN ! quantization axis lies along z axis
++          spinor1: DO ISPINOR=1,WDES%NRSPINORS
++            IF (WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==2) CYCLE sites
++            IF (WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==1) CYCLE sites
           NPROJ=NPROJ+1
           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
           CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
-@@ -2632,4 +2664,3 @@
+@@ -673,9 +716,9 @@
+          ENDDO
+ 
+ 
+-!        CALL START_TIMING("T2")
++      !        CALL START_TIMING("T2")
+          ! runs over all k-points
+-         kpoints : DO NKI=1,num_kpts
++            kpoints1 : DO NKI=1,num_kpts
+             CALL CALC_OVERLAP_GN( &
+            &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
+             ! and rotate them in accordance with proj_z and proj_x
+@@ -712,15 +755,102 @@
+                A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
+             ENDDO
+ 
++            ENDDO kpoints1
++
++            DEALLOCATE(FTMP,FR,FGTMP,FG)
++
++            IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') 'Projection ',NPROJ,' done.'
++      !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
++      !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
++          ENDDO spinor1
++
++        ELSE ! quantization axis does not lies along z axis
++        ! CCX_2019-05-06: generate spinor eigenvectors.
++          IF (proj_s(ICNTR)==1) THEN ! up channel
++              FAC(1)=(1.0d0/SQRT(1+proj_s_qaxis(3,ICNTR)))*(proj_s_qaxis(3,ICNTR)+1)*CMPLX(1.0d0,0.0d0,q)
++              FAC(2)=(1.0d0/SQRT(1+proj_s_qaxis(3,ICNTR)))*CMPLX(proj_s_qaxis(1,ICNTR),proj_s_qaxis(2,ICNTR),q)
++              NPROJ=NPROJ+1
++          ELSE ! down channel
++              FAC(1)=(1.0d0/SQRT(1-proj_s_qaxis(3,ICNTR)))*(proj_s_qaxis(3,ICNTR)-1)*CMPLX(1.0d0,0.0d0,q)
++              FAC(2)=(1.0d0/SQRT(1-proj_s_qaxis(3,ICNTR)))*CMPLX(proj_s_qaxis(1,ICNTR),proj_s_qaxis(2,ICNTR),q)
++              NPROJ=NPROJ+1
++          ENDIF
++
++          spinor: DO ISPINOR=1,WDES%NRSPINORS
++           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
++            CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
++#ifdef debug
++            IF (IO%IU6>=0) THEN
++               WRITE(*,'(I4,3F14.7)') ICNTR,proj_site(1:3,ICNTR)
++               DO N=10,MIN((LMAX+1)**2,16)
++                  WRITE(*,'(9F10.5)') (ROTYLM(N,M),M=10,MIN((LMAX+1)**2,16))
++               ENDDO
++            ENDIF
++#endif
++            ! translate between VASP and the orbital definition of wannier90
++            CALL WANNIER90_ORBITAL_DEFINITIONS(proj_l(ICNTR),proj_m(ICNTR),HYBRID_ORBITAL)
++            ! setup the radial functions (real space)
++            CALL SETRGRID(RSTART/proj_zona(ICNTR),REND,H,R)
++            ALLOCATE(FTMP(R%NMAX),FR(R%NMAX,LMAX+1))
++            ALLOCATE(FGTMP(NMAX,5),FG(NMAX,5,LMAX+1))
++            ! For now we use the same radial function for all L
++            DO L=0,LMAX
++               CALL RADIAL_FUNCTION(proj_radial(ICNTR),R,proj_zona(ICNTR),FTMP)
++               CALL BESSEL_TRANSFORM_RADIAL_FUNCTION(L,R,FTMP,REAL(SQRT(2._q*INFO%ENMAX/HSQDTM)/NMAX,KIND=q),FGTMP)
++               FR(:,L+1)=FTMP; FG(:,:,L+1)=FGTMP
++            ENDDO
++
++
++         !        CALL START_TIMING("T2")
++            ! runs over all k-points
++            kpoints : DO NKI=1,num_kpts
++               CALL CALC_OVERLAP_GN( &
++              &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
++               ! and rotate them in accordance with proj_z and proj_x
++               AP=0
++               DO M=1,WDES%NB_TOT
++               DO N=1,(LMAX+1)**2
++                  DO NP=1,(LMAX+1)**2
++                     AP(M,N)=AP(M,N)+A(M,NP)*ROTYLM(N,NP)
++                  ENDDO
++               ENDDO
++               ENDDO
++#ifdef debug
++               IF (IO%IU6>=0) THEN
++                  WRITE(*,'(I4,3F14.7)') NKI,kpt_latt(1:3,NKI)
++                  DO M=1,WDES%NB_TOT
++                     WRITE(*,'(4(2F14.7,2X))') (A(M,N),N=1,4)
++                  ENDDO
++                  WRITE(*,*)
++                  DO M=1,WDES%NB_TOT
++                     WRITE(*,'(4(2F14.7,2X))') (AP(M,N),N=1,4)
++                  ENDDO
++                  WRITE(*,*)
++               ENDIF
++#endif
++               ! Make the desired linear combinations
++               MI=0
++               DO M=1,WDES%NB_TOT
++                  IF (EXCLUDE_BAND(M)) CYCLE
++                  CPROJ=0
++                  DO N=1,(LMAX+1)**2
++                     CPROJ=CPROJ+AP(M,N)*HYBRID_ORBITAL(N)
++                  ENDDO
++                  MI=MI+1
++                  ! CCX_2019-05-06: dot spin quantization coefficients FAC(ISPINOR).
++                  A_matrix(MI,NPROJ,NKI,ISP)=A_matrix(MI,NPROJ,NKI,ISP)+FAC(ISPINOR)*CPROJ
++               ENDDO
++
+          ENDDO kpoints
+ 
+          DEALLOCATE(FTMP,FR,FGTMP,FG)
+ 
+          IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') 'Projection ',NPROJ,' done.'
+-!        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
+-!        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
+-      ENDDO sites
++         !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
++         !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
+       ENDDO spinor
++        ENDIF ! quantization IF
++      ENDDO sites
+ 
+       DEALLOCATE(A,AP,ROTYLM,HYBRID_ORBITAL)
+ 
+@@ -2632,4 +2762,3 @@
  1001     FORMAT(2I6,2F26.16)
        ENDSUBROUTINE WRITE_WANPROJ_FILE
        END MODULE mlwf

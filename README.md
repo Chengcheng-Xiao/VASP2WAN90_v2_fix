@@ -102,6 +102,8 @@ When compiled against the `WANNIER90 v2.0+` version, the spin channel informatio
 ## Fix
 Utilize `proj_s` as the spin channel indicator, project corresponding Bloch states on to the orbital functions with correct spin channel.
 
+If the spin quantization axis is set, both spin channel projection will be calculated. The final `A_mn` matrix will be the linear combinations of these projections.
+
 ## Useage
 Put `mlwf.patch` file in the root directory of your VASP distro and type:
 ```
@@ -119,6 +121,4 @@ LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 
 *2. The correctness of this patch has been checked against the WANNIER90 (version 1.2) on several cases.
 
-*3. Currently `proj_s_qaxis` cannot be specified and all spinor projection will default to `[0,0,1]` axis.
-
-*4. Any result obtained by this patch should be carefully checked by yourself. USE THIS AT YOUR OWN RISK.
+*3. Any result obtained by this patch should be carefully checked by yourself. USE THIS AT YOUR OWN RISK.
