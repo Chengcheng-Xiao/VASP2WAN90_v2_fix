@@ -62,7 +62,7 @@ site 1 projection pz (WAN spin_2)
 ```
 
 ## Why?
-In WANNIER90 v1.2, in the `parameters.F90` file, there is:
+In `WANNIER90 v1.2`, in the `parameters.F90` file, there is:
 ```
 if(spinors) num_proj=num_wann/2
 ```
@@ -102,7 +102,7 @@ When compiled against the `WANNIER90 v2.0+` version, the spin channel informatio
 ## Fix
 Utilize `proj_s` as the spin channel indicator, project corresponding Bloch states on to the orbital functions with correct spin channel.
 
-If the spin quantization axis is set, both spin channel projection will be calculated. The final `A_mn` matrix will be the linear combinations of these projections.
+If the spin quantization axis is set, both spin channels' projection will be calculated. The final `A_mn` matrix will be the linear combinations of the result of these two projections. The output will indicate a different projection scheme is employed if quantization axis differs from z axis.
 
 ## Useage
 Put `mlwf.patch` file in the root directory of your VASP distro and type:
