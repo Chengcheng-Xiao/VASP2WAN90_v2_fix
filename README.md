@@ -73,7 +73,7 @@ However, in `WANNIER90 v2.1+`, changes were made in the `parameters.F90`, they a
 |          VALUE         |                MEANING                |
 |:----------------------:|:-------------------------------------:|
 |          1             |  only `spin_up` or only `spin_down`   |
-|          2             |  both `spin_up` and only `spin_down`  |
+|          2             |  both `spin_up` and `spin_down`       |
 
 Each projection's spin channel were then determined by:
 ```
@@ -121,4 +121,6 @@ LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 
 *2. The correctness of this patch has been checked against the WANNIER90 (version 1.2) on several cases.
 
-*3. Any result obtained by this patch should be carefully checked by yourself. USE THIS AT YOUR OWN RISK.
+*3. Currently, the running wannier90 in library mode using `LWANNIER90_RUN` tag is not supported. Reading AMN file using `LREAD_AMN` tag is not supported. 
+
+*3. Any result obtained by this patch should be carefully checked by yourself. USE AT YOUR OWN RISK.

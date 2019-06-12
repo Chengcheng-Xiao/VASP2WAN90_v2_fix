@@ -1,6 +1,6 @@
 diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 --- src/mlwf.F	2017-04-20 17:03:58.000000000 +0800
-+++ ../vasp.5.4.4_mod/src/mlwf.F	2019-05-06 21:09:12.000000000 +0800
++++ ../vasp.5.4.4_mod/src/mlwf.F	2019-06-12 19:23:08.000000000 +0800
 @@ -320,6 +320,9 @@
        REAL(q), ALLOCATABLE :: proj_x(:,:)
        REAL(q), ALLOCATABLE :: proj_zona(:)
@@ -11,7 +11,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        ! wannier90_run variables: input
        COMPLEX(q), ALLOCATABLE :: M_matrix(:,:,:,:,:)
        COMPLEX(q), ALLOCATABLE :: A_matrix(:,:,:,:)
-@@ -329,6 +332,11 @@
+@@ -329,6 +332,12 @@
        INTEGER NI,MI,NK,NKP,ICNTR
        INTEGER NKI,NKJ,ISP,ISPINOR,L,M,N,NP
        INTEGER NEXCLB,NPROJ
@@ -19,11 +19,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +      LOGICAL spin_z_pos,spin_z_neg
 +      COMPLEX(q) FAC(2)
 +      REAL(q) :: eps6=0.000001_q
++      REAL(q) xnorm
 +      ! CCX_2019-05-06: end definition
        REAL(q) POS(3)
        REAL(q) KI(3),KJ(3)
        INTEGER IDUM,IERR
-@@ -449,8 +457,17 @@
+@@ -449,8 +458,17 @@
  
        ALLOCATE(proj_site(3,num_bands_tot),proj_l(num_bands_tot),proj_m(num_bands_tot), &
       &   proj_radial(num_bands_tot),proj_z(3,num_bands_tot),proj_x(3,num_bands_tot), &
@@ -42,7 +43,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        ! Only one node will do the actual work,
        ! otherwise all will write to wannier90.wout
-@@ -460,7 +477,12 @@
+@@ -460,7 +478,12 @@
       &                   kpt_latt,num_bands_tot,num_atoms,atom_symbols,atoms_cart, &
       &                   gamma_only,spinors,nntot,nnlist,nncell,num_bands,num_wann, &
       &                   proj_site,proj_l,proj_m,proj_radial,proj_z,proj_x,proj_zona, &
@@ -56,7 +57,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #endif
        ! Now communicate the output to the other nodes
        CALLMPI( M_sum_i(WDES%COMM,nntot,1) ) 
-@@ -476,6 +498,11 @@
+@@ -476,6 +499,11 @@
        CALLMPI( M_sum_d(WDES%COMM,proj_x,3*num_bands_tot) )
        CALLMPI( M_sum_d(WDES%COMM,proj_zona,num_bands_tot) )
        CALLMPI( M_sum_i(WDES%COMM,exclude_bands,num_bands_tot) )
@@ -68,7 +69,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        ALLOCATE(EXCLUDE_BAND(num_bands_tot))
        EXCLUDE_BAND=.FALSE. ; NEXCLB=0
-@@ -584,6 +611,11 @@
+@@ -584,6 +612,11 @@
        DO ISPINOR=1,WDES%NRSPINORS
        DO ICNTR=1,num_bands_tot
           IF (proj_l(ICNTR)==0.AND.proj_m(ICNTR)==0.AND.proj_radial(ICNTR)==0) CYCLE
@@ -80,7 +81,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           NPROJ=NPROJ+1
        ENDDO
        ENDDO
-@@ -643,11 +675,28 @@
+@@ -643,11 +676,34 @@
        ALLOCATE(ROTYLM((LMAX+1)**2,(LMAX+1)**2),HYBRID_ORBITAL((LMAX+1)**2))
  
        NPROJ=0 
@@ -92,6 +93,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +        ! CCX_2019-05-06: determin spin quantization axis along z axis or not.
 +        spin_z_pos=.false.
 +        spin_z_neg=.false.
++        ! CCX_2019-06-10: renormalize spin quantization axis
++        xnorm=SQRT(proj_s_qaxis(1,ICNTR)*proj_s_qaxis(1,ICNTR)+proj_s_qaxis(2,ICNTR)*proj_s_qaxis(2,ICNTR)+proj_s_qaxis(3,ICNTR)*proj_s_qaxis(3,ICNTR))
++        proj_s_qaxis(1,ICNTR)=proj_s_qaxis(1,ICNTR)/xnorm
++        proj_s_qaxis(2,ICNTR)=proj_s_qaxis(2,ICNTR)/xnorm
++        proj_s_qaxis(3,ICNTR)=proj_s_qaxis(3,ICNTR)/xnorm
++
 +        IF ((abs(proj_s_qaxis(1,ICNTR)-0.0d0)<eps6).and.(abs(proj_s_qaxis(2,ICNTR)-0.0d0)<eps6) &
 +           .and.(abs(proj_s_qaxis(3,ICNTR)-1.0d0)<eps6)) then
 +           spin_z_pos=.true.
@@ -99,7 +106,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +           .and.abs(proj_s_qaxis(3,ICNTR)+1.0d0)<eps6) then
 +           spin_z_neg=.true.
 +        ENDIF
-+        ! CCX_2019-05-06: [start] if proj_s_qaxis lies along z, normal projections are done. 
++        ! CCX_2019-05-06: [start] if proj_s_qaxis lies along z, normal projections are done.
 +        IF (spin_z_pos .OR. spin_z_neg.or.WDES%NRSPINORS==1) THEN ! if not spinor, still use this routine.
 +          spinor1: DO ISPINOR=1,WDES%NRSPINORS
 +            IF (spin_z_pos.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==2) CYCLE spinor1
@@ -107,11 +114,11 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +            ! if neg then swap up and down definition
 +            IF (spin_z_neg.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==1) CYCLE spinor1
 +            IF (spin_z_neg.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==2) CYCLE spinor1
-+        
++
           NPROJ=NPROJ+1
           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
           CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
-@@ -673,9 +722,9 @@
+@@ -673,9 +729,9 @@
           ENDDO
  
  
@@ -123,7 +130,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
              CALL CALC_OVERLAP_GN( &
             &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
              ! and rotate them in accordance with proj_z and proj_x
-@@ -712,15 +761,103 @@
+@@ -712,15 +768,109 @@
                 A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
              ENDDO
  
@@ -142,6 +149,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +        ! CCX_2019-05-06: [end] end normal routine.
 +        ELSE ! CCX_2019-05-06: quantization axis does not lies along z axis, do special projection routine.
 +        ! CCX_2019-05-06: generate spinor eigenvectors.
++          ! CCX_2019-06-10: renormalize spin quantization axis
++          xnorm=SQRT(proj_s_qaxis(1,ICNTR)*proj_s_qaxis(1,ICNTR)+proj_s_qaxis(2,ICNTR)*proj_s_qaxis(2,ICNTR)+proj_s_qaxis(3,ICNTR)*proj_s_qaxis(3,ICNTR))
++          proj_s_qaxis(1,ICNTR)=proj_s_qaxis(1,ICNTR)/xnorm
++          proj_s_qaxis(2,ICNTR)=proj_s_qaxis(2,ICNTR)/xnorm
++          proj_s_qaxis(3,ICNTR)=proj_s_qaxis(3,ICNTR)/xnorm
++
 +          IF (proj_s(ICNTR)==1) THEN ! up channel
 +              FAC(1)=(1.0d0/SQRT(1+proj_s_qaxis(3,ICNTR)))*(proj_s_qaxis(3,ICNTR)+1)*CMPLX(1.0d0,0.0d0,q)
 +              FAC(2)=(1.0d0/SQRT(1+proj_s_qaxis(3,ICNTR)))*CMPLX(proj_s_qaxis(1,ICNTR),proj_s_qaxis(2,ICNTR),q)
@@ -231,7 +244,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        DEALLOCATE(A,AP,ROTYLM,HYBRID_ORBITAL)
  
-@@ -2632,4 +2769,3 @@
+@@ -2632,4 +2782,3 @@
  1001     FORMAT(2I6,2F26.16)
        ENDSUBROUTINE WRITE_WANPROJ_FILE
        END MODULE mlwf
