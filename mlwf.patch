@@ -1,6 +1,6 @@
 diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
---- src/mlwf.F	2017-04-20 17:03:58.000000000 +0800
-+++ ../vasp.5.4.4_mod/src/mlwf.F	2019-06-12 19:23:08.000000000 +0800
+--- src/mlwf.F	2017-04-20 10:03:58.000000000 +0100
++++ ../vasp.5.4.4_mod/src/mlwf.F	2020-06-15 20:40:55.111349786 +0100
 @@ -320,6 +320,9 @@
        REAL(q), ALLOCATABLE :: proj_x(:,:)
        REAL(q), ALLOCATABLE :: proj_zona(:)
@@ -81,11 +81,13 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           NPROJ=NPROJ+1
        ENDDO
        ENDDO
-@@ -643,11 +676,34 @@
+@@ -643,11 +676,36 @@
        ALLOCATE(ROTYLM((LMAX+1)**2,(LMAX+1)**2),HYBRID_ORBITAL((LMAX+1)**2))
  
        NPROJ=0 
 -!     CALL START_TIMING("T1")
++      ! CCX_2020-06-15: initialize A matrix
++      A_matrix=0
        ! runs over all projector sites
 -      spinor: DO ISPINOR=1,WDES%NRSPINORS
        sites : DO ICNTR=1,num_bands_tot
@@ -118,7 +120,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           NPROJ=NPROJ+1
           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
           CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
-@@ -673,9 +729,9 @@
+@@ -673,9 +731,9 @@
           ENDDO
  
  
@@ -130,7 +132,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
              CALL CALC_OVERLAP_GN( &
             &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
              ! and rotate them in accordance with proj_z and proj_x
-@@ -712,15 +768,109 @@
+@@ -712,15 +770,111 @@
                 A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
              ENDDO
  
@@ -142,7 +144,6 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') 'Projection ',NPROJ,' done.'
 -!        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
 -!        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
--      ENDDO sites
 +      !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
 +      !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
 +          ENDDO spinor1
@@ -165,7 +166,8 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +              NPROJ=NPROJ+1
 +          ENDIF
 +
-+          spinor: DO ISPINOR=1,WDES%NRSPINORS
++          ! 2020-06-15 CCX: we no longer need ISPINOR loop since we are using full spinor guiding functions.
++          !spinor: DO ISPINOR=1,WDES%NRSPINORS
 +           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
 +            CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
 +#ifdef debug
@@ -193,8 +195,8 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +         !        CALL START_TIMING("T2")
 +            ! runs over all k-points
 +            kpoints : DO NKI=1,num_kpts
-+               CALL CALC_OVERLAP_GN( &
-+              &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
++               CALL CALC_OVERLAP_GN_ALL( &
++              &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,FAC,P,CQIJ,LATT_CUR,T_INFO,A)
 +               ! and rotate them in accordance with proj_z and proj_x
 +               AP=0
 +               DO M=1,WDES%NB_TOT
@@ -227,7 +229,8 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +                  ENDDO
 +                  MI=MI+1
 +                  ! CCX_2019-05-06: dot spin quantization coefficients FAC(ISPINOR).
-+                  A_matrix(MI,NPROJ,NKI,ISP)=A_matrix(MI,NPROJ,NKI,ISP)+FAC(ISPINOR)*CPROJ
++                  !A_matrix(MI,NPROJ,NKI,ISP)=A_matrix(MI,NPROJ,NKI,ISP)+FAC(ISPINOR)*CPROJ
++                  A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
 +               ENDDO
 +
 +            ENDDO kpoints
@@ -237,15 +240,241 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +         !  IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A,I3,A)') 'Spin channel',ISPINOR,' done.'
 +         !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
 +         !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
-       ENDDO spinor
++      !ENDDO spinor
 +          IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') 'Projection ',NPROJ,' done. [q_axis changed]'
 +        ENDIF ! quantization IF
-+      ENDDO sites
+       ENDDO sites
+-      ENDDO spinor
  
        DEALLOCATE(A,AP,ROTYLM,HYBRID_ORBITAL)
  
-@@ -2632,4 +2782,3 @@
- 1001     FORMAT(2I6,2F26.16)
-       ENDSUBROUTINE WRITE_WANPROJ_FILE
-       END MODULE mlwf
--
+@@ -1880,6 +2034,104 @@
+       RETURN
+       END SUBROUTINE CALC_OVERLAP_GN
+ 
++      !******************** SUBROUTINE CALC_OVERLAP_GN_ALL *******************
++      ! 2020-06-15 CCX: added to use CONSTRUCT_FUNCTION_RYlm_ALL
++      !                 for spin_quantization calculations
++      !***********************************************************************
++            SUBROUTINE CALC_OVERLAP_GN_ALL( &
++           &   L,FG,POS,W,K,ISP,SPIN_FAC,P,CQIJ,LATT_CUR,T_INFO,S &
++           &)
++            USE pead
++            USE poscar
++            USE pseudo
++            USE lattice
++            USE full_kpoints
++            USE wave_high
++            USE nonl_high
++            IMPLICIT NONE
++            TYPE(wavespin) W
++            TYPE(potcar) P(:)
++            TYPE(latt) LATT_CUR
++            TYPE(type_info) T_INFO
++            INTEGER L
++            INTEGER ISP
++            ! 2020-06-15 CCX: read in SPIN_FAC
++            COMPLEX(q) SPIN_FAC(2)
++            REAL(q) K(3)
++            REAL(q) FG(:,:,:)
++            REAL(q) POS(3)
++            OVERLAP CQIJ(:,:,:,:)
++            GDEF S(W%WDES%NB_TOT,(L+1)**2)
++            ! local variables
++            TYPE(wavespin) WP
++            TYPE(wavefuna) WK,WRYlm
++            TYPE(wavedes1), TARGET :: WDESK
++            TYPE(nonl_struct) NONL_S
++
++            TYPE(rotation_handle), POINTER :: ROT_HANDLE
++
++            GDEF C
++            REAL(q) WSCAL
++            INTEGER NK,NB,N,NYLM
++
++            WP=W
++            WP%WDES=>WDES_FULL_PEAD
++
++            CALL CHECK_FULL_KPOINTS
++
++            NULLIFY(ROT_HANDLE)
++
++            NYLM=(L+1)**2
++
++            ! search for kpoint k in BZ
++            NK=KPOINT_IN_FULL_GRID(K,KPOINTS_FULL)
++            CALL SETWDES(WP%WDES,WDESK,NK)
++            IF (NK==KPOINTS_FULL%NEQUIV(NK)) THEN
++               ! k is a kpoint in the IBZ
++               WK=ELEMENTS(WP,WDESK,ISP)
++            ELSE
++               ! k is not a kpoint in the IBZ
++               CALL NEWWAVA(WK,WDESK,WDESK%NBANDS)
++               CALL PEAD_WA_ROTATE(WP,P,LATT_CUR,ISP,WK)
++            ENDIF
++
++            CALL NONL_ALLOC(NONL_S,T_INFO,P,WP%WDES,.FALSE.)
++            CALL SPHER(WP%WDES%GRID,NONL_S,P,WP%WDES,LATT_CUR,1,NK)
++            CALL PHASE(WP%WDES,NONL_S,NK)
++
++            CALL NEWWAVA(WRYlm,WDESK,NYLM)
++            WRYlm%CW=0
++            !WRITE(*,*) WRYlm%WDES1%LOVERL,   WRYlm%WDES1%NPROD
++            ! 2020-06-15 CCX: use CONSTRUCT_FUNCTION_RYlm_ALL.
++            CALL CONSTRUCT_FUNCTION_RYlm_ALL(L,FG,LATT_CUR,POS,NONL_S,SPIN_FAC,WRYlm)
++            ! and normalize the functions WRYlm
++            DO N=1,NYLM
++               CALL CNORMN(ELEMENT(WRYlm,N),CQIJ,1,WSCAL)
++            ENDDO
++
++            ! calculate overlap between Wk and WRYlm: < w_{m,k1} | S | RYlm >
++            S=0
++            DO NB=1,WP%WDES%NBANDS
++               DO N=1,NYLM
++                  C=W1_DOT(ELEMENT(WK,NB),ELEMENT(WRYlm,N),CQIJ)
++                  S(WDESK%NB_LOW+WDESK%NB_PAR*(NB-1),N)=C
++      !           WRITE(*,*) WDESK%NB_LOW+WDESK%NB_PAR*(NB-1),N,C
++               ENDDO
++            ENDDO
++
++            CALLMPI( M_sum_g(WDESK%COMM_INTER,S(1,1),WDESK%NB_TOT*NYLM) )
++
++            ! some deallocation to be done
++            CALL DEALLOCATE_ROT_HANDLE(ROT_HANDLE)
++
++            CALL DELWAVA(WRYlm)
++            IF (NK/=KPOINTS_FULL%NEQUIV(NK)) CALL DELWAVA(WK)
++
++            CALL NONL_DEALLOC(NONL_S)
++
++            RETURN
++          END SUBROUTINE CALC_OVERLAP_GN_ALL
++
+ 
+ !******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm ***************
+ !      
+@@ -1989,6 +2241,124 @@
+       RETURN
+       END SUBROUTINE CONSTRUCT_FUNCTION_RYlm
+ 
++!******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL ***********
++! 2020-06-15 CCX: added to construct full RYlm with 2 spinors.
++!                 the PAW projector are constructed with the new
++!                 spinor wavefunctions.
++!                 Also, see W1_DOT in wave_high.F
++!***********************************************************************
++      SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL( &
++     &   LMAX,F,LATT_CUR,POS,NONL_S,SPIN_FAC,WRYLM &
++     &)
++      USE ini
++      USE asa
++      USE pead
++      USE lattice
++      USE constant
++      USE wave_high
++      USE nonl_high
++      IMPLICIT NONE
++      TYPE(latt) LATT_CUR
++      TYPE(wavefuna) WRYLM
++      TYPE (nonl_struct) NONL_S
++      REAL(q) F(:,:,:)
++      REAL(q) POS(3)
++      INTEGER LMAX
++      ! 2020-06-15 CCX: read in SPIN_FAC
++      COMPLEX(q) SPIN_FAC(2)
++      ! local variables
++      ! 2020-06-15 CCX: ISPINOR is now local variable
++      INTEGER ISPINOR
++      TYPE(wavefun1) W1
++      INTEGER N1,N2,N3,IND,NPL,LMMAX,L,M,LM,IG
++      REAL(q) G1,G2,G3,GKX,GKY,GKZ,FACTM,FAKT,FDER
++      REAL(q), ALLOCATABLE :: XS(:),YS(:),ZS(:),YLM(:,:)
++      REAL(q), ALLOCATABLE :: G(:),FG(:)
++      COMPLEX(q) CSET,CGDR
++      COMPLEX(q), ALLOCATABLE :: CFAKTX(:)
++
++      LMMAX=(LMAX+1)**2
++
++      NPL=WRYLM%WDES1%NGVECTOR
++
++      ! 2020-06-15 CCX: deleted this part, usually not usefull.
++      !IF (ISPINOR/=1.AND.(.NOT.WRYLM%WDES1%LNONCOLLINEAR)) THEN
++      !   WRITE(*,*) 'CONSTRUCT_FUNCTION_RYlm: ERROR: ISPINOR=',ISPINOR,' but LNONCOLLINEAR=.FALSE.'
++      !   STOP
++      !ENDIF
++
++      ALLOCATE(G(NPL),FG(NPL))
++      ALLOCATE(XS(NPL),YS(NPL),ZS(NPL),CFAKTX(NPL))
++
++      ! loop over all G-vectors in the basis at this k-point
++      DO IND=1,WRYLM%WDES1%NGVECTOR
++         N1=MOD(WRYLM%WDES1%IGX(IND)+WRYLM%WDES1%GRID%NGX,WRYLM%WDES1%GRID%NGX)+1
++         N2=MOD(WRYLM%WDES1%IGY(IND)+WRYLM%WDES1%GRID%NGY,WRYLM%WDES1%GRID%NGY)+1
++         N3=MOD(WRYLM%WDES1%IGZ(IND)+WRYLM%WDES1%GRID%NGZ,WRYLM%WDES1%GRID%NGZ)+1
++
++         G1=(WRYLM%WDES1%GRID%LPCTX(N1)+WRYLM%WDES1%VKPT(1))
++         G2=(WRYLM%WDES1%GRID%LPCTY(N2)+WRYLM%WDES1%VKPT(2))
++         G3=(WRYLM%WDES1%GRID%LPCTZ(N3)+WRYLM%WDES1%VKPT(3))
++
++         FACTM=1._q
++         IF (WRYLM%WDES1%LGAMMA .AND. (N1/=1 .OR. N2/=1 .OR. N3/=1)) FACTM=SQRT(2._q)
++
++         GKX=(G1*LATT_CUR%B(1,1)+G2*LATT_CUR%B(1,2)+G3*LATT_CUR%B(1,3))*TPI
++         GKY=(G1*LATT_CUR%B(2,1)+G2*LATT_CUR%B(2,2)+G3*LATT_CUR%B(2,3))*TPI
++         GKZ=(G1*LATT_CUR%B(3,1)+G2*LATT_CUR%B(3,2)+G3*LATT_CUR%B(3,3))*TPI
++
++         G(IND)=MAX(SQRT(GKX*GKX+GKY*GKY+GKZ*GKZ),1E-10_q)
++
++         ! phase factor e^{-i(k+G)R} where R is the origin
++         ! of the localized function
++         CGDR=CITPI*(G1*POS(1)+G2*POS(2)+G3*POS(3))
++!        CGDR=0
++         CFAKTX(IND)=FACTM*EXP(-CGDR)
++
++         XS(IND)  =GKX/G(IND)
++         YS(IND)  =GKY/G(IND)
++         ZS(IND)  =GKZ/G(IND)
++      ENDDO
++
++      ALLOCATE(YLM(NPL,LMMAX))
++      ! get me all the Y_lm up to and including l=LMAX
++      CALL SETYLM(LMAX,NPL,YLM,XS,YS,ZS)
++
++      ! Setup the plane wave part of the desired function
++      FAKT= 1/SQRT(LATT_CUR%OMEGA)
++      CSET=CMPLX(0._q,-1._q,q)
++
++!     WRYLM%CW=0
++      LM=1
++      DO L=0,LMAX
++         ! get me the Bessel transform of the radial function
++         DO IG=1,SIZE(G)
++            CALL SPLVAL(G(IG),FG(IG),FDER,F(:,:,L+1),SIZE(F,1),SIZE(F,1))
++         ENDDO
++         DO IND=1,NPL
++            DO M=1,2*L+1
++               ! 2020-06-15 CCX: added ISPINOR loop to construct full spinor WF
++               !                 each part dotted with SPIN_FAC for quant_axis.
++               DO ISPINOR=1,2
++                 WRYLM%CW(IND+(ISPINOR-1)*NPL,LM+M-1)= &
++                &   SPIN_FAC(ISPINOR)*FAKT*(CSET**L)*CFAKTX(IND)*FG(IND)*YLM(IND,LM+M-1)
++               ENDDO
++            ENDDO
++         ENDDO
++         LM=LM+2*L+1
++      ENDDO
++
++      ! and get the projections of RYlm onto the PAW projectors
++      WRYLM%CPROJ=0
++      DO LM=1,LMMAX
++         W1=ELEMENT(WRYLM,LM)
++         CALL PROJ1(NONL_S,WRYLM%WDES1,W1)
++      ENDDO
++
++      DEALLOCATE(G,FG,XS,YS,ZS,CFAKTX,YLM)
++
++      RETURN
++    END SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL
+ 
+ !******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
+ !      

@@ -102,7 +102,7 @@ When compiled against the `WANNIER90 v2.0+` version, the spin channel informatio
 ## Fix
 Utilize `proj_s` as the spin channel indicator, project corresponding Bloch states on to the orbital functions with correct spin channel.
 
-If the spin quantization axis is set, both spin channels' projection will be calculated. The final `A_mn` matrix will be the linear combinations of the result of these two projections. The output will indicate a different projection scheme is employed if quantization axis differs from z axis.
+If the spin quantization axis is set, full spinor guiding functions will be constructed, the rotation of those spinor wavefunctions are done by dotting with the eigenvectors of the Pauli matrix. PAW projector coefficients' contribution to the overlap will also be calculated for said rotations.
 
 ## Useage
 Put `mlwf.patch` file in the root directory of your VASP distro and type:
@@ -121,6 +121,28 @@ LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 
 *2. The correctness of this patch has been checked against the WANNIER90 (version 1.2) on several cases.
 
-*3. Currently, the running wannier90 in library mode using `LWANNIER90_RUN` tag is not supported. Reading AMN file using `LREAD_AMN` tag is not supported. 
+*3. Currently, the running wannier90 in library mode using `LWANNIER90_RUN` tag is not supported. Reading AMN file using `LREAD_AMN` tag is not supported.
 
 *3. Any result obtained by this patch should be carefully checked by yourself. USE AT YOUR OWN RISK.
+
+*4. For V1.2, the order of the spinor WFs are:
+
+```
+site 1 projection s  (spin_1)
+site 1 projection px (spin_1)
+site 1 projection py (spin_1)
+...
+site 1 projection s  (spin_2)
+site 1 projection px (spin_2)
+site 1 projection py (spin_2)
+```
+with this fix, they are:
+```
+site 1 projection s  (spin_1)
+site 1 projection s  (spin_2)
+site 1 projection px (spin_1)
+site 1 projection px (spin_2)
+site 1 projection py (spin_1)
+site 1 projection py (spin_2)
+```
+same rule applied to the `_hr.dat` file.
