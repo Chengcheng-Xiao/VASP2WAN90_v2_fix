@@ -1,11 +1,28 @@
 # VASP2WAN90_v2_fix
 An attempt to fix the broken VAPS2WANNIER90v2 interface.
 
-## Symptoms
+## NEW ABILITIES!
+
+- Calculate non-collinear Wannier functions("the fix")
+- New spinor projection method supported (specify spinor channel, quantization axis)
+- Write non-collinear UNK file (`UNKxxxxx.NC`) for plotting purpose.
+
+## Useage
+Put `mlwf.patch` file in the root directory of your VASP distro and type:
+```
+$ patch -p0 < mlwf.patch
+```
+Then, compile the code with `-DVASP2WANNIER90v2` precompile flag alone with the wannier90 library `libwannier.a`
+```
+CPP_OPTIONS+=-DVASP2WANNIER90v2
+LLIBS+=/path/to/your/wannier90_distro/libwannier.a
+```
+
+## Original Symptoms
 In VASP (version 5.4.4), the VASP2WANNIER90v2 compiler flag was added as a interface to the [WANNIER90](https://github.com/wannier-developers/wannier90) (version 2.X) program.
 However, with spin-orbital coupling turned on, this interface cannot correctly calculate the number of projections needed.
 
-The symptom is quite obvious, wrong number of projections are done in the projection routine, causing VASP to either frozen or crashes.
+The symptom is quite obvious, wrong number of projections are done in the projection routine, causing VASP to either freeze or crash.
 
 For example:
 
@@ -103,17 +120,6 @@ When compiled against the `WANNIER90 v2.0+` version, the spin channel informatio
 Utilize `proj_s` as the spin channel indicator, project corresponding Bloch states on to the orbital functions with correct spin channel.
 
 If the spin quantization axis is set, full spinor guiding functions will be constructed, the rotation of those spinor wavefunctions are done by dotting with the eigenvectors of the Pauli matrix. PAW projector coefficients' contribution to the overlap will also be calculated for said rotations.
-
-## Useage
-Put `mlwf.patch` file in the root directory of your VASP distro and type:
-```
-$ patch -p0 < mlwf.patch
-```
-Then, compile the code with `-DVASP2WANNIER90v2` precompile flag alone with the wannier90 library `libwannier.a`
-```
-CPP_OPTIONS+=-DVASP2WANNIER90v2
-LLIBS+=/path/to/your/wannier90_distro/libwannier.a
-```
 
 ## Notes
 
