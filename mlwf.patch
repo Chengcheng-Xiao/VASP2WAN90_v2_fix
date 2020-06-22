@@ -1,7 +1,35 @@
 diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 --- src/mlwf.F	2017-04-20 10:03:58.000000000 +0100
-+++ ../vasp.5.4.4_mod/src/mlwf.F	2020-06-15 20:40:55.111349786 +0100
-@@ -320,6 +320,9 @@
++++ ../vasp.5.4.4_mod/src/mlwf.F	2020-06-22 21:03:41.108545423 +0100
+@@ -6,6 +6,8 @@
+  
+       ! write the wave functions to UNK files
+       LOGICAL, PRIVATE, SAVE :: WRITE_UNK
++      LOGICAL, PRIVATE, SAVE :: UNK_FMTED
++
+       ! write the mmn and amn files when WANNIER90 runs in lib mode
+       LOGICAL, PRIVATE, SAVE :: WRITE_MMN_AMN
+ 
+@@ -195,6 +197,18 @@
+                WRITE(IU0,*)'Error reading item ''LWRITE_UNK'' from file INCAR.'
+             WRITE_UNK=.FALSE.
+          ENDIF
++
++         ! 2020-06-22 CCX: added to determine UNK is formatted or not
++         UNK_FMTED=.FALSE.
++         CALL RDATAB(.FALSE.,INCAR,IU5,'LUNK_FMTED','=','#',';','L', &
++        &            IDUM,RDUM,CDUM,UNK_FMTED,CHARAC,N,1,IERR)
++         IF (((IERR/=0).AND.(IERR/=3)).OR. &
++        &                    ((IERR==0).AND.(N<1))) THEN
++            IF (IU0>=0) &
++               WRITE(IU0,*)'Error reading item ''LUNK_FMTED'' from file INCAR.'
++            UNK_FMTED=.FALSE.
++         ENDIF
++
+          ! Do we want to write the mmn and amn files
+          ! even though WANNIER90 runs in library mode?
+          WRITE_MMN_AMN=.NOT.LWANNIER90_RUN
+@@ -320,6 +334,9 @@
        REAL(q), ALLOCATABLE :: proj_x(:,:)
        REAL(q), ALLOCATABLE :: proj_zona(:)
        INTEGER, ALLOCATABLE :: exclude_bands(:)
@@ -11,7 +39,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        ! wannier90_run variables: input
        COMPLEX(q), ALLOCATABLE :: M_matrix(:,:,:,:,:)
        COMPLEX(q), ALLOCATABLE :: A_matrix(:,:,:,:)
-@@ -329,6 +332,12 @@
+@@ -329,6 +346,12 @@
        INTEGER NI,MI,NK,NKP,ICNTR
        INTEGER NKI,NKJ,ISP,ISPINOR,L,M,N,NP
        INTEGER NEXCLB,NPROJ
@@ -24,7 +52,27 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        REAL(q) POS(3)
        REAL(q) KI(3),KJ(3)
        INTEGER IDUM,IERR
-@@ -449,8 +458,17 @@
+@@ -364,12 +387,14 @@
+ !        STOP
+ !     END IF
+ #endif
++
++! 2020-06-22 CCX: wannier90 CAN plot spinors.
+       ! WANNIER90 cannot plot spinors
+-      IF (WRITE_UNK.AND.WDES%LNONCOLLINEAR) THEN
+-         IF (IO%IU0>=0) WRITE(IO%IU0,*) &
+-        & 'MLWF_WANNIER90: ERROR: will not write spinors to UNK files, sorry ...'
+-         WRITE_UNK=.FALSE.
+-      ENDIF
++!      IF (WRITE_UNK.AND.WDES%LNONCOLLINEAR) THEN
++!         IF (IO%IU0>=0) WRITE(IO%IU0,*) &
++!        & 'MLWF_WANNIER90: ERROR: will not write spinors to UNK files, sorry ...'
++!         WRITE_UNK=.FALSE.
++!      ENDIF
+ !
+ ! allocation
+       ALLOCATE(S(WDES%NB_TOT,WDES%NB_TOT))
+@@ -449,8 +474,17 @@
  
        ALLOCATE(proj_site(3,num_bands_tot),proj_l(num_bands_tot),proj_m(num_bands_tot), &
       &   proj_radial(num_bands_tot),proj_z(3,num_bands_tot),proj_x(3,num_bands_tot), &
@@ -43,7 +91,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        ! Only one node will do the actual work,
        ! otherwise all will write to wannier90.wout
-@@ -460,7 +478,12 @@
+@@ -460,7 +494,12 @@
       &                   kpt_latt,num_bands_tot,num_atoms,atom_symbols,atoms_cart, &
       &                   gamma_only,spinors,nntot,nnlist,nncell,num_bands,num_wann, &
       &                   proj_site,proj_l,proj_m,proj_radial,proj_z,proj_x,proj_zona, &
@@ -57,7 +105,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #endif
        ! Now communicate the output to the other nodes
        CALLMPI( M_sum_i(WDES%COMM,nntot,1) ) 
-@@ -476,6 +499,11 @@
+@@ -476,6 +515,11 @@
        CALLMPI( M_sum_d(WDES%COMM,proj_x,3*num_bands_tot) )
        CALLMPI( M_sum_d(WDES%COMM,proj_zona,num_bands_tot) )
        CALLMPI( M_sum_i(WDES%COMM,exclude_bands,num_bands_tot) )
@@ -69,7 +117,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        ALLOCATE(EXCLUDE_BAND(num_bands_tot))
        EXCLUDE_BAND=.FALSE. ; NEXCLB=0
-@@ -584,6 +612,11 @@
+@@ -584,6 +628,11 @@
        DO ISPINOR=1,WDES%NRSPINORS
        DO ICNTR=1,num_bands_tot
           IF (proj_l(ICNTR)==0.AND.proj_m(ICNTR)==0.AND.proj_radial(ICNTR)==0) CYCLE
@@ -81,7 +129,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           NPROJ=NPROJ+1
        ENDDO
        ENDDO
-@@ -643,11 +676,36 @@
+@@ -643,11 +692,36 @@
        ALLOCATE(ROTYLM((LMAX+1)**2,(LMAX+1)**2),HYBRID_ORBITAL((LMAX+1)**2))
  
        NPROJ=0 
@@ -120,7 +168,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           NPROJ=NPROJ+1
           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
           CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
-@@ -673,9 +731,9 @@
+@@ -673,9 +747,9 @@
           ENDDO
  
  
@@ -132,7 +180,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
              CALL CALC_OVERLAP_GN( &
             &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
              ! and rotate them in accordance with proj_z and proj_x
-@@ -712,15 +770,111 @@
+@@ -712,15 +786,111 @@
                 A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
              ENDDO
  
@@ -248,7 +296,33 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        DEALLOCATE(A,AP,ROTYLM,HYBRID_ORBITAL)
  
-@@ -1880,6 +2034,104 @@
+@@ -811,14 +981,24 @@
+       ! to make matters worse, WANNIER90 works with the full k-mesh
+       ! whereas VASP uses the symmetry reduced one.
+  100  FORMAT('UNK',I5.5,'.',I1)
++ 101  FORMAT('UNK',I5.5,'.NC')
+       IF (WRITE_UNK) THEN
+          DO NKI=1,num_kpts
+             IF (IO%IU6>=0) THEN
++               IF (W%WDES%NRSPINORS/=1) THEN
++                 WRITE(UNKFILE,101) NKI
++               ELSE
+                WRITE(UNKFILE,100) NKI,ISP
++               ENDIF
++               IF (UNK_FMTED) THEN
++                 OPEN(UNIT=99,FILE=UNKFILE,FORM='FORMATTED',STATUS='REPLACE')
++                 WRITE(99,*) W%WDES%GRID%NGX,W%WDES%GRID%NGY,W%WDES%GRID%NGZ,NKI,num_bands
++               ELSE
+                OPEN(UNIT=99,FILE=UNKFILE,FORM='UNFORMATTED',STATUS='REPLACE')
+                WRITE(99) W%WDES%GRID%NGX,W%WDES%GRID%NGY,W%WDES%GRID%NGZ,NKI,num_bands
+             ENDIF
+-            CALL WRITE_WAVE_FUNCTIONS(W,kpt_latt(:,NKI),ISP,EXCLUDE_BAND,P,LATT_CUR,99)   
++            ENDIF
++            CALL WRITE_WAVE_FUNCTIONS(W,kpt_latt(:,NKI),ISP,EXCLUDE_BAND,P,LATT_CUR,UNK_FMTED,99)
+             IF (IO%IU6>=0) CLOSE(99)
+          ENDDO
+       ENDIF
+@@ -1880,6 +2060,104 @@
        RETURN
        END SUBROUTINE CALC_OVERLAP_GN
  
@@ -353,16 +427,20 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
  !******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm ***************
  !      
-@@ -1989,6 +2241,124 @@
+@@ -1989,11 +2267,129 @@
        RETURN
        END SUBROUTINE CONSTRUCT_FUNCTION_RYlm
  
+-
+-!******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
+-!      
 +!******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL ***********
 +! 2020-06-15 CCX: added to construct full RYlm with 2 spinors.
 +!                 the PAW projector are constructed with the new
 +!                 spinor wavefunctions.
 +!                 Also, see W1_DOT in wave_high.F
-+!***********************************************************************
+ !***********************************************************************
+-      SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,IU)
 +      SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL( &
 +     &   LMAX,F,LATT_CUR,POS,NONL_S,SPIN_FAC,WRYLM &
 +     &)
@@ -475,6 +553,136 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +
 +      RETURN
 +    END SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL
++
++    !******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
++    !
++    !***********************************************************************
++          SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,UNK_FMTED,IU)
+       USE pead
+       USE pseudo
+       USE lattice
+@@ -2006,6 +2402,7 @@
+       INTEGER ISP,IU
+       REAL(q) K(3)
+       LOGICAL EXCLUDE_BAND(W%WDES%NB_TOT) 
++          LOGICAL UNK_FMTED
+      ! local variables
+       TYPE(wavespin) WP
+       TYPE(wavefuna) WK
+@@ -2014,7 +2411,7 @@
  
- !******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
+       TYPE(rotation_handle), POINTER :: ROT_HANDLE
+ 
+-      INTEGER NK,NB,ISTRIP
++          INTEGER NK,NB,ISTRIP,ISPINOR
+       INTEGER NX,NY,NZ,NC,NGX,NGY,NGZ,IND,I,NWRITTEN
+       INTEGER, PARAMETER :: NSTRIP=1
+ 
+@@ -2047,7 +2444,12 @@
+          CALL NEWWAV(WCOLLECT(NB),WDESK,.TRUE.)
+       ENDDO
+ 
++          ! 2020-06-22 CCX: added for non-collinear WF plot
++          IF (WP%WDES%NRSPINORS/=1) THEN
++            ALLOCATE(WVFN(NGX*NGY*NGZ*2))
++          ELSE
+       ALLOCATE(WVFN(NGX*NGY*NGZ))
++          ENDIF
+ 
+       NWRITTEN=0 
+ 
+@@ -2070,11 +2472,18 @@
+                   NZ=WP%WDES%GRID%RL%I3(NC)
+                   DO NX=1,WP%WDES%GRID%RL%NROW
+                      IND=NX+(NY-1)*NGX+(NZ-1)*NGX*NGY
+-#ifdef gammareal
++    #ifdef gammareal
+                      WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
+-#else
++    #else
++                         ! 2020-06-22 CCX: added for non-collinear WF plot
++                         IF (WP%WDES%NRSPINORS/=1) THEN
++                           DO ISPINOR=0,WP%WDES%NRSPINORS-1
++                             WVFN(IND+ISPINOR*(NGX*NGY*NGZ))=WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW+ISPINOR*(NGX*NGY*NGZ))
++                           ENDDO
++                         ELSE
+                      WVFN(IND)=WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW)
+-#endif
++                         ENDIF
++    #endif
+                   ENDDO
+                ENDDO
+             ELSEIF (WP%WDES%GRID%RL%NFAST==3) THEN
+@@ -2083,27 +2492,57 @@
+                   NY=WP%WDES%GRID%RL%I3(NC)
+                   DO NZ=1,WP%WDES%GRID%RL%NROW
+                      IND=NX+(NY-1)*NGX+(NZ-1)*NGX*NGY
+-#ifdef gammareal
++    #ifdef gammareal
+                      WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
+-#else
++    #else
++                         ! 2020-06-22 CCX: added for non-collinear WF plot
++                         IF (WP%WDES%NRSPINORS/=1) THEN
++                           DO ISPINOR=0,W%WDES%NRSPINORS-1
++                             WVFN(IND+ISPINOR*(NGX*NGY*NGZ))=WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW+ISPINOR*(NGX*NGY*NGZ))
++                           ENDDO
++                         ELSE
+                      WVFN(IND)=WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW)
+-#endif
++                         ENDIF
++    #endif
+                   ENDDO
+                ENDDO
+             ELSE
+                WRITE(*,'(A)') 'WRITE_WAVE_FUNCTIONS: ERROR: W1 grid not set'
+                STOP
+             ENDIF
++
++                ! 2020-06-22 CCX: added for non-collinear WF plot
++                IF (WP%WDES%NRSPINORS/=1) THEN
++                  CALLMPI(M_sum_g(WP%WDES%COMM_INB,WVFN(1),NGX*NGY*NGZ*2))
++                ELSE
+             CALLMPI(M_sum_g(WP%WDES%COMM_INB,WVFN(1),NGX*NGY*NGZ))
++                ENDIF
+ 
+             ! write WVFN to file
+-#ifdef MPI
++    #ifdef MPI
+             IF (WP%WDES%COMM%NODE_ME==WP%WDES%COMM%IONODE) THEN 
+-#endif
++    #endif
++                   ! 2020-06-22 CCX: added for non-collinear WF plot
++                   IF (WP%WDES%NRSPINORS/=1) THEN
++                     IF (UNK_FMTED) THEN
++		       DO ISPINOR=0,1
++                         WRITE(IU,'(2ES20.10)') (WVFN(I),I=1,NGX*NGY*NGZ)
++		       ENDDO
++                     ELSEIF (.NOT. UNK_FMTED) THEN
++		       DO ISPINOR=0,1
+                WRITE(IU) (WVFN(I),I=1,NGX*NGY*NGZ)
+-#ifdef MPI
++		       ENDDO
+             ENDIF
+-#endif
++                   ELSEIF (WP%WDES%NRSPINORS==1) THEN
++                     IF (UNK_FMTED) THEN
++                       WRITE(IU,'(2ES20.10)') (WVFN(I),I=1,NGX*NGY*NGZ)
++                     ELSEIF (.NOT. UNK_FMTED) THEN
++                       WRITE(IU) (WVFN(I),I=1,NGX*NGY*NGZ)
++                     ENDIF
++                   ENDIF
++    #ifdef MPI
++                ENDIF
++    #endif
+             NWRITTEN=NWRITTEN+1
+          ENDDO
+       ENDDO
+@@ -2120,7 +2559,6 @@
+       RETURN
+       END SUBROUTINE WRITE_WAVE_FUNCTIONS
+ 
+-
+ !******************** SUBROUTINE OCCURS_IN_FILE ************************
  !      
+ !***********************************************************************
