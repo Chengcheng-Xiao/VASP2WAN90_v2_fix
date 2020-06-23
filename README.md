@@ -18,6 +18,8 @@ CPP_OPTIONS+=-DVASP2WANNIER90v2
 LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 ```
 
+Additionally, you can specify the format of the `UNK` file by adding `LUNK_DMTED = .TRUE.` to your `INACR` file.
+
 ## Original Symptoms
 In VASP (version 5.4.4), the VASP2WANNIER90v2 compiler flag was added as a interface to the [WANNIER90](https://github.com/wannier-developers/wannier90) (version 2.X) program.
 However, with spin-orbital coupling turned on, this interface cannot correctly calculate the number of projections needed.
