@@ -3,9 +3,12 @@ An attempt to fix the broken VAPS2WANNIER90v2 interface.
 
 ## NEW ABILITIES!
 
-- Calculate non-collinear Wannier functions("the fix")
+- Calculate non-collinear Wannier functions ("the fix")
 - New spinor projection method supported (specify spinor channel, quantization axis)
 - Write non-collinear UNK file (`UNKxxxxx.NC`) for plotting purpose.
+  - `LWRITE_UNK=.TRUE.` now works for `ncl` version.
+  - additionally, you can write formatted `UNK` file by adding `LUNK_FMTED = .TRUE.` to your `INACR` file.
+
 
 ## Useage
 Put `mlwf.patch` file in the root directory of your VASP distro and type:
@@ -17,8 +20,7 @@ Then, compile the code with `-DVASP2WANNIER90v2` precompile flag alone with the 
 CPP_OPTIONS+=-DVASP2WANNIER90v2
 LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 ```
-
-Additionally, you can specify the format of the `UNK` file by adding `LUNK_DMTED = .TRUE.` to your `INACR` file.
+__THIS FIX DOES NOT WORK WITH VASP v6.1.0__
 
 ## Original Symptoms
 In VASP (version 5.4.4), the VASP2WANNIER90v2 compiler flag was added as a interface to the [WANNIER90](https://github.com/wannier-developers/wannier90) (version 2.X) program.
