@@ -1,6 +1,6 @@
 diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 --- src/mlwf.F	2017-04-20 10:03:58.000000000 +0100
-+++ ../vasp.5.4.4_mod/src/mlwf.F	2020-06-22 21:03:41.108545423 +0100
++++ ../vasp.5.4.4_mod/src/mlwf.F	2020-06-23 12:41:51.058460377 +0100
 @@ -6,6 +6,8 @@
   
        ! write the wave functions to UNK files
@@ -326,103 +326,103 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        RETURN
        END SUBROUTINE CALC_OVERLAP_GN
  
-+      !******************** SUBROUTINE CALC_OVERLAP_GN_ALL *******************
-+      ! 2020-06-15 CCX: added to use CONSTRUCT_FUNCTION_RYlm_ALL
-+      !                 for spin_quantization calculations
-+      !***********************************************************************
-+            SUBROUTINE CALC_OVERLAP_GN_ALL( &
-+           &   L,FG,POS,W,K,ISP,SPIN_FAC,P,CQIJ,LATT_CUR,T_INFO,S &
-+           &)
-+            USE pead
-+            USE poscar
-+            USE pseudo
-+            USE lattice
-+            USE full_kpoints
-+            USE wave_high
-+            USE nonl_high
-+            IMPLICIT NONE
-+            TYPE(wavespin) W
-+            TYPE(potcar) P(:)
-+            TYPE(latt) LATT_CUR
-+            TYPE(type_info) T_INFO
-+            INTEGER L
-+            INTEGER ISP
-+            ! 2020-06-15 CCX: read in SPIN_FAC
-+            COMPLEX(q) SPIN_FAC(2)
-+            REAL(q) K(3)
-+            REAL(q) FG(:,:,:)
-+            REAL(q) POS(3)
-+            OVERLAP CQIJ(:,:,:,:)
-+            GDEF S(W%WDES%NB_TOT,(L+1)**2)
-+            ! local variables
-+            TYPE(wavespin) WP
-+            TYPE(wavefuna) WK,WRYlm
-+            TYPE(wavedes1), TARGET :: WDESK
-+            TYPE(nonl_struct) NONL_S
++!******************** SUBROUTINE CALC_OVERLAP_GN_ALL *******************
++! 2020-06-15 CCX: added to use CONSTRUCT_FUNCTION_RYlm_ALL
++!                 for spin_quantization calculations
++!***********************************************************************
++      SUBROUTINE CALC_OVERLAP_GN_ALL( &
++     &   L,FG,POS,W,K,ISP,SPIN_FAC,P,CQIJ,LATT_CUR,T_INFO,S &
++     &)
++      USE pead
++      USE poscar
++      USE pseudo
++      USE lattice
++      USE full_kpoints
++      USE wave_high
++      USE nonl_high
++      IMPLICIT NONE
++      TYPE(wavespin) W
++      TYPE(potcar) P(:)
++      TYPE(latt) LATT_CUR
++      TYPE(type_info) T_INFO
++      INTEGER L
++      INTEGER ISP
++      ! 2020-06-15 CCX: read in SPIN_FAC
++      COMPLEX(q) SPIN_FAC(2)
++      REAL(q) K(3)
++      REAL(q) FG(:,:,:)
++      REAL(q) POS(3)
++      OVERLAP CQIJ(:,:,:,:)
++      GDEF S(W%WDES%NB_TOT,(L+1)**2)
++      ! local variables
++      TYPE(wavespin) WP
++      TYPE(wavefuna) WK,WRYlm
++      TYPE(wavedes1), TARGET :: WDESK
++      TYPE(nonl_struct) NONL_S
 +
-+            TYPE(rotation_handle), POINTER :: ROT_HANDLE
++      TYPE(rotation_handle), POINTER :: ROT_HANDLE
 +
-+            GDEF C
-+            REAL(q) WSCAL
-+            INTEGER NK,NB,N,NYLM
++      GDEF C
++      REAL(q) WSCAL
++      INTEGER NK,NB,N,NYLM
 +
-+            WP=W
-+            WP%WDES=>WDES_FULL_PEAD
++      WP=W
++      WP%WDES=>WDES_FULL_PEAD
 +
-+            CALL CHECK_FULL_KPOINTS
++      CALL CHECK_FULL_KPOINTS
 +
-+            NULLIFY(ROT_HANDLE)
++      NULLIFY(ROT_HANDLE)
 +
-+            NYLM=(L+1)**2
++      NYLM=(L+1)**2
 +
-+            ! search for kpoint k in BZ
-+            NK=KPOINT_IN_FULL_GRID(K,KPOINTS_FULL)
-+            CALL SETWDES(WP%WDES,WDESK,NK)
-+            IF (NK==KPOINTS_FULL%NEQUIV(NK)) THEN
-+               ! k is a kpoint in the IBZ
-+               WK=ELEMENTS(WP,WDESK,ISP)
-+            ELSE
-+               ! k is not a kpoint in the IBZ
-+               CALL NEWWAVA(WK,WDESK,WDESK%NBANDS)
-+               CALL PEAD_WA_ROTATE(WP,P,LATT_CUR,ISP,WK)
-+            ENDIF
++      ! search for kpoint k in BZ
++      NK=KPOINT_IN_FULL_GRID(K,KPOINTS_FULL)
++      CALL SETWDES(WP%WDES,WDESK,NK)
++      IF (NK==KPOINTS_FULL%NEQUIV(NK)) THEN
++         ! k is a kpoint in the IBZ
++         WK=ELEMENTS(WP,WDESK,ISP)
++      ELSE
++         ! k is not a kpoint in the IBZ
++         CALL NEWWAVA(WK,WDESK,WDESK%NBANDS)
++         CALL PEAD_WA_ROTATE(WP,P,LATT_CUR,ISP,WK)
++      ENDIF
 +
-+            CALL NONL_ALLOC(NONL_S,T_INFO,P,WP%WDES,.FALSE.)
-+            CALL SPHER(WP%WDES%GRID,NONL_S,P,WP%WDES,LATT_CUR,1,NK)
-+            CALL PHASE(WP%WDES,NONL_S,NK)
++      CALL NONL_ALLOC(NONL_S,T_INFO,P,WP%WDES,.FALSE.)
++      CALL SPHER(WP%WDES%GRID,NONL_S,P,WP%WDES,LATT_CUR,1,NK)
++      CALL PHASE(WP%WDES,NONL_S,NK)
 +
-+            CALL NEWWAVA(WRYlm,WDESK,NYLM)
-+            WRYlm%CW=0
-+            !WRITE(*,*) WRYlm%WDES1%LOVERL,   WRYlm%WDES1%NPROD
-+            ! 2020-06-15 CCX: use CONSTRUCT_FUNCTION_RYlm_ALL.
-+            CALL CONSTRUCT_FUNCTION_RYlm_ALL(L,FG,LATT_CUR,POS,NONL_S,SPIN_FAC,WRYlm)
-+            ! and normalize the functions WRYlm
-+            DO N=1,NYLM
-+               CALL CNORMN(ELEMENT(WRYlm,N),CQIJ,1,WSCAL)
-+            ENDDO
++      CALL NEWWAVA(WRYlm,WDESK,NYLM)
++      WRYlm%CW=0
++      !WRITE(*,*) WRYlm%WDES1%LOVERL,   WRYlm%WDES1%NPROD
++      ! 2020-06-15 CCX: use CONSTRUCT_FUNCTION_RYlm_ALL.
++      CALL CONSTRUCT_FUNCTION_RYlm_ALL(L,FG,LATT_CUR,POS,NONL_S,SPIN_FAC,WRYlm)
++      ! and normalize the functions WRYlm
++      DO N=1,NYLM
++         CALL CNORMN(ELEMENT(WRYlm,N),CQIJ,1,WSCAL)
++      ENDDO
 +
-+            ! calculate overlap between Wk and WRYlm: < w_{m,k1} | S | RYlm >
-+            S=0
-+            DO NB=1,WP%WDES%NBANDS
-+               DO N=1,NYLM
-+                  C=W1_DOT(ELEMENT(WK,NB),ELEMENT(WRYlm,N),CQIJ)
-+                  S(WDESK%NB_LOW+WDESK%NB_PAR*(NB-1),N)=C
-+      !           WRITE(*,*) WDESK%NB_LOW+WDESK%NB_PAR*(NB-1),N,C
-+               ENDDO
-+            ENDDO
++      ! calculate overlap between Wk and WRYlm: < w_{m,k1} | S | RYlm >
++      S=0
++      DO NB=1,WP%WDES%NBANDS
++         DO N=1,NYLM
++            C=W1_DOT(ELEMENT(WK,NB),ELEMENT(WRYlm,N),CQIJ)
++            S(WDESK%NB_LOW+WDESK%NB_PAR*(NB-1),N)=C
++!           WRITE(*,*) WDESK%NB_LOW+WDESK%NB_PAR*(NB-1),N,C
++         ENDDO
++      ENDDO
 +
-+            CALLMPI( M_sum_g(WDESK%COMM_INTER,S(1,1),WDESK%NB_TOT*NYLM) )
++      CALLMPI( M_sum_g(WDESK%COMM_INTER,S(1,1),WDESK%NB_TOT*NYLM) )
 +
-+            ! some deallocation to be done
-+            CALL DEALLOCATE_ROT_HANDLE(ROT_HANDLE)
++      ! some deallocation to be done
++      CALL DEALLOCATE_ROT_HANDLE(ROT_HANDLE)
 +
-+            CALL DELWAVA(WRYlm)
-+            IF (NK/=KPOINTS_FULL%NEQUIV(NK)) CALL DELWAVA(WK)
++      CALL DELWAVA(WRYlm)
++      IF (NK/=KPOINTS_FULL%NEQUIV(NK)) CALL DELWAVA(WK)
 +
-+            CALL NONL_DEALLOC(NONL_S)
++      CALL NONL_DEALLOC(NONL_S)
 +
-+            RETURN
-+          END SUBROUTINE CALC_OVERLAP_GN_ALL
++      RETURN
++    END SUBROUTINE CALC_OVERLAP_GN_ALL
 +
  
  !******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm ***************
@@ -431,16 +431,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        RETURN
        END SUBROUTINE CONSTRUCT_FUNCTION_RYlm
  
--
--!******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
--!      
 +!******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL ***********
 +! 2020-06-15 CCX: added to construct full RYlm with 2 spinors.
 +!                 the PAW projector are constructed with the new
 +!                 spinor wavefunctions.
 +!                 Also, see W1_DOT in wave_high.F
- !***********************************************************************
--      SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,IU)
++!***********************************************************************
 +      SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL( &
 +     &   LMAX,F,LATT_CUR,POS,NONL_S,SPIN_FAC,WRYLM &
 +     &)
@@ -553,11 +549,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +
 +      RETURN
 +    END SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL
-+
-+    !******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
-+    !
-+    !***********************************************************************
-+          SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,UNK_FMTED,IU)
+ 
+ !******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
+ !      
+ !***********************************************************************
+-      SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,IU)
++      SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,UNK_FMTED,IU)
        USE pead
        USE pseudo
        USE lattice
@@ -565,7 +562,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        INTEGER ISP,IU
        REAL(q) K(3)
        LOGICAL EXCLUDE_BAND(W%WDES%NB_TOT) 
-+          LOGICAL UNK_FMTED
++      LOGICAL UNK_FMTED
       ! local variables
        TYPE(wavespin) WP
        TYPE(wavefuna) WK
@@ -574,7 +571,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        TYPE(rotation_handle), POINTER :: ROT_HANDLE
  
 -      INTEGER NK,NB,ISTRIP
-+          INTEGER NK,NB,ISTRIP,ISPINOR
++      INTEGER NK,NB,ISTRIP,ISPINOR
        INTEGER NX,NY,NZ,NC,NGX,NGY,NGZ,IND,I,NWRITTEN
        INTEGER, PARAMETER :: NSTRIP=1
  
@@ -582,102 +579,82 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
           CALL NEWWAV(WCOLLECT(NB),WDESK,.TRUE.)
        ENDDO
  
-+          ! 2020-06-22 CCX: added for non-collinear WF plot
-+          IF (WP%WDES%NRSPINORS/=1) THEN
-+            ALLOCATE(WVFN(NGX*NGY*NGZ*2))
-+          ELSE
++      ! 2020-06-22 CCX: added for non-collinear WF plot
++      IF (WP%WDES%NRSPINORS/=1) THEN
++        ALLOCATE(WVFN(NGX*NGY*NGZ*2))
++      ELSE
        ALLOCATE(WVFN(NGX*NGY*NGZ))
-+          ENDIF
++      ENDIF
  
        NWRITTEN=0 
  
-@@ -2070,11 +2472,18 @@
-                   NZ=WP%WDES%GRID%RL%I3(NC)
-                   DO NX=1,WP%WDES%GRID%RL%NROW
-                      IND=NX+(NY-1)*NGX+(NZ-1)*NGX*NGY
--#ifdef gammareal
-+    #ifdef gammareal
+@@ -2073,7 +2475,14 @@
+ #ifdef gammareal
                       WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
--#else
-+    #else
-+                         ! 2020-06-22 CCX: added for non-collinear WF plot
-+                         IF (WP%WDES%NRSPINORS/=1) THEN
-+                           DO ISPINOR=0,WP%WDES%NRSPINORS-1
-+                             WVFN(IND+ISPINOR*(NGX*NGY*NGZ))=WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW+ISPINOR*(NGX*NGY*NGZ))
-+                           ENDDO
-+                         ELSE
+ #else
++                     ! 2020-06-22 CCX: added for non-collinear WF plot
++                     IF (WP%WDES%NRSPINORS/=1) THEN
++                       DO ISPINOR=0,WP%WDES%NRSPINORS-1
++                         WVFN(IND+ISPINOR*(NGX*NGY*NGZ))=WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW+ISPINOR*(NGX*NGY*NGZ))
++                       ENDDO
++                     ELSE
                       WVFN(IND)=WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW)
--#endif
-+                         ENDIF
-+    #endif
++                     ENDIF
+ #endif
                    ENDDO
                 ENDDO
-             ELSEIF (WP%WDES%GRID%RL%NFAST==3) THEN
-@@ -2083,27 +2492,57 @@
-                   NY=WP%WDES%GRID%RL%I3(NC)
-                   DO NZ=1,WP%WDES%GRID%RL%NROW
-                      IND=NX+(NY-1)*NGX+(NZ-1)*NGX*NGY
--#ifdef gammareal
-+    #ifdef gammareal
+@@ -2086,7 +2495,14 @@
+ #ifdef gammareal
                       WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
--#else
-+    #else
-+                         ! 2020-06-22 CCX: added for non-collinear WF plot
-+                         IF (WP%WDES%NRSPINORS/=1) THEN
-+                           DO ISPINOR=0,W%WDES%NRSPINORS-1
-+                             WVFN(IND+ISPINOR*(NGX*NGY*NGZ))=WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW+ISPINOR*(NGX*NGY*NGZ))
-+                           ENDDO
-+                         ELSE
+ #else
++                     ! 2020-06-22 CCX: added for non-collinear WF plot
++                     IF (WP%WDES%NRSPINORS/=1) THEN
++                       DO ISPINOR=0,W%WDES%NRSPINORS-1
++                         WVFN(IND+ISPINOR*(NGX*NGY*NGZ))=WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW+ISPINOR*(NGX*NGY*NGZ))
++                       ENDDO
++                     ELSE
                       WVFN(IND)=WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW)
--#endif
-+                         ENDIF
-+    #endif
++                     ENDIF
+ #endif
                    ENDDO
                 ENDDO
-             ELSE
+@@ -2094,13 +2510,36 @@
                 WRITE(*,'(A)') 'WRITE_WAVE_FUNCTIONS: ERROR: W1 grid not set'
                 STOP
              ENDIF
 +
-+                ! 2020-06-22 CCX: added for non-collinear WF plot
-+                IF (WP%WDES%NRSPINORS/=1) THEN
-+                  CALLMPI(M_sum_g(WP%WDES%COMM_INB,WVFN(1),NGX*NGY*NGZ*2))
-+                ELSE
++            ! 2020-06-22 CCX: added for non-collinear WF plot
++            IF (WP%WDES%NRSPINORS/=1) THEN
++              CALLMPI(M_sum_g(WP%WDES%COMM_INB,WVFN(1),NGX*NGY*NGZ*2))
++            ELSE
              CALLMPI(M_sum_g(WP%WDES%COMM_INB,WVFN(1),NGX*NGY*NGZ))
-+                ENDIF
++            ENDIF
  
              ! write WVFN to file
--#ifdef MPI
-+    #ifdef MPI
+ #ifdef MPI
              IF (WP%WDES%COMM%NODE_ME==WP%WDES%COMM%IONODE) THEN 
--#endif
-+    #endif
-+                   ! 2020-06-22 CCX: added for non-collinear WF plot
-+                   IF (WP%WDES%NRSPINORS/=1) THEN
-+                     IF (UNK_FMTED) THEN
-+		       DO ISPINOR=0,1
-+                         WRITE(IU,'(2ES20.10)') (WVFN(I),I=1,NGX*NGY*NGZ)
-+		       ENDDO
-+                     ELSEIF (.NOT. UNK_FMTED) THEN
-+		       DO ISPINOR=0,1
+ #endif
++               ! 2020-06-22 CCX: added for non-collinear WF plot
++               IF (WP%WDES%NRSPINORS/=1) THEN
++                 IF (UNK_FMTED) THEN
++                   DO ISPINOR=0,1
++                     WRITE(IU,'(2ES20.10)') (WVFN(I),I=1+NGX*NGY*NGZ*ISPINOR,NGX*NGY*NGZ+NGX*NGY*NGZ*ISPINOR)
++                   ENDDO
++                 ELSEIF (.NOT. UNK_FMTED) THEN
++                   DO ISPINOR=0,1
++                     WRITE(IU) (WVFN(I),I=1+NGX*NGY*NGZ*ISPINOR,NGX*NGY*NGZ+NGX*NGY*NGZ*ISPINOR)
++                   ENDDO
++                 ENDIF
++               ELSEIF (WP%WDES%NRSPINORS==1) THEN
++                 IF (UNK_FMTED) THEN
++                   WRITE(IU,'(2ES20.10)') (WVFN(I),I=1,NGX*NGY*NGZ)
++                 ELSEIF (.NOT. UNK_FMTED) THEN
                 WRITE(IU) (WVFN(I),I=1,NGX*NGY*NGZ)
--#ifdef MPI
-+		       ENDDO
++                 ENDIF
++               ENDIF
+ #ifdef MPI
              ENDIF
--#endif
-+                   ELSEIF (WP%WDES%NRSPINORS==1) THEN
-+                     IF (UNK_FMTED) THEN
-+                       WRITE(IU,'(2ES20.10)') (WVFN(I),I=1,NGX*NGY*NGZ)
-+                     ELSEIF (.NOT. UNK_FMTED) THEN
-+                       WRITE(IU) (WVFN(I),I=1,NGX*NGY*NGZ)
-+                     ENDIF
-+                   ENDIF
-+    #ifdef MPI
-+                ENDIF
-+    #endif
-             NWRITTEN=NWRITTEN+1
-          ENDDO
-       ENDDO
+ #endif
 @@ -2120,7 +2559,6 @@
        RETURN
        END SUBROUTINE WRITE_WAVE_FUNCTIONS
