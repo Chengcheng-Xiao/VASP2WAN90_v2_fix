@@ -8,8 +8,13 @@ implicit none
 201   format ('UNK',i5.5,'.','NC')
 202   format ('UNK',i5.5,'.','NC_1')
 
+   ! read header
+   open(3, file='UNK00001.NC', FORM='UNFORMATTED')
+   read (1) ngx, ngy, ngz, nk, nbnd
+   close(3)
+
    ! open file
-   do I=01,36
+   do I=1,nk
      write(wfnname_in,201) I
      open(1, file=wfnname_in, FORM='UNFORMATTED')
 
