@@ -1,16 +1,20 @@
 # VASP2WAN90_v2_fix
-An attempt to fix the broken VAPS2WANNIER90v2 interface.
+Fixing the `VAPS2WANNIER90v2` interface.
 
 ## NEW ABILITIES!
 
 - Calculate non-collinear Wannier functions ("the fix")
-- New spinor projection method supported (specify spinor channel, quantization axis)
+- New spinor projection method (specify spinor channel, quantization axis)
 - Write non-collinear UNK file (`UNKxxxxx.NC`) for plotting purpose.
-  - `LWRITE_UNK=.TRUE.` now works for `ncl` version.
-  - additionally, you can write formatted `UNK` file by adding `LUNK_FMTED = .TRUE.` to your `INACR` file.
+  - `LWRITE_UNK=.TRUE.` now works for both `std` and `ncl` version. (`gam` version not tested)
+  - additionally, change the format of the `UNK` files by adding `LUNK_FMTED = .TRUE.` to your `INACR` file.
+- Write `.spn` files with `LWRITE_SPN=.TRUE.` tag. (Sadly, this can be done in serial since bands are distributed)
+  - additionally, change the format of the `.spn` files by adding `LSPN_FMTED = .TRUE.` to your `INACR` file.
 
+## Compile
 
-## Useage
+__THIS FIX DOES NOT WORK WITH VASP v6.1.0__
+
 Put `mlwf.patch` file in the root directory of your VASP distro and type:
 ```
 $ patch -p0 < mlwf.patch
@@ -20,7 +24,25 @@ Then, compile the code with `-DVASP2WANNIER90v2` precompile flag alone with the 
 CPP_OPTIONS+=-DVASP2WANNIER90v2
 LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 ```
-__THIS FIX DOES NOT WORK WITH VASP v6.1.0__
+
+## Keywords
+A list of useful keywords:
+
+|      Tag       |                               meaning                                    |
+|:--------------:|:------------------------------------------------------------------------:|
+|   LWANNIER90   |                  Do we want to use the interface?                        |
+|   LWRITE_UNK   |                     Do we want the `UNK` files?                          |
+|   LUNK_FMTED   |               should the `UNK` files be human-redable?                   |
+|   LWRITE_SPN   |         Do we want the `.spn` files? (can only run in serial)            |
+|   LSPN_FMTED   |               should the `.spn` files be human-redable?                  |
+| LWRITE_MMN_AMN | Do we want the `.mmn` and `.amm` files? (they will still be calculated)  |
+
+## Pro Tips
+1. To Calculate `.spn`, you can set `LWRITE_SPN=.TRUE.` in their `INCAR`. Since this function can only be achieved in serial (or MPI with one process), be extra careful with how many cores you are using.
+
+2. If you have a pre-converged calculation, simply set `ALGO=None` and `NELM=1` while read in the `WAVECAR` and the `CHGCAR` to initialize `VASP2WANNIER90` interface. This will probably save you some time.
+
+3. Dont write the `unit_cell`, `atom`, `mp_grid`, `kpoints`, and `spinors` in your `.win` file. VASP will fill in these for you automatically.
 
 ## Original Symptoms
 In VASP (version 5.4.4), the VASP2WANNIER90v2 compiler flag was added as a interface to the [WANNIER90](https://github.com/wannier-developers/wannier90) (version 2.X) program.
