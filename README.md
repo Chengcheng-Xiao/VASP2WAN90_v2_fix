@@ -8,14 +8,14 @@ Fixing the `VAPS2WANNIER90v2` interface.
 - Write non-collinear UNK file (`UNKxxxxx.NC`) for plotting purpose.
   - `LWRITE_UNK=.TRUE.` now works for both `std` and `ncl` version. (`gam` version not tested)
   - additionally, change the format of the `UNK` files by adding `LUNK_FMTED = .TRUE.` to your `INACR` file.
-- Write `.spn` files with `LWRITE_SPN=.TRUE.` tag. (Sadly, this can be done in serial since bands are distributed)
+- Write `.spn` files with `LWRITE_SPN=.TRUE.` tag. (This only works in serial)
   - additionally, change the format of the `.spn` files by adding `LSPN_FMTED = .TRUE.` to your `INACR` file.
 
 ## Compile
 
 __THIS FIX DOES NOT WORK WITH VASP v6.1.0__
 
-Put `mlwf.patch` file in the root directory of your VASP distro and type:
+Put `mlwf.patch` file in the root directory of your VASP distro. and type:
 ```
 $ patch -p0 < mlwf.patch
 ```
