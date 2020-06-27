@@ -1,6 +1,6 @@
 diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 --- src/mlwf.F	2017-04-20 10:03:58.000000000 +0100
-+++ ../vasp.5.4.4_mod/src/mlwf.F	2020-06-25 17:50:36.070113515 +0100
++++ ../vasp.5.4.4_mod/src/mlwf.F	2020-06-27 14:53:00.443474078 +0100
 @@ -6,6 +6,12 @@
   
        ! write the wave functions to UNK files
@@ -79,20 +79,32 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        REAL(q) POS(3)
        REAL(q) KI(3),KJ(3)
        INTEGER IDUM,IERR
-@@ -344,6 +394,12 @@
- 
-       COMPLEX(q),ALLOCATABLE ::  S(:,:)
-       GDEF, ALLOCATABLE :: A(:,:),AP(:,:)
-+      ! 2020-06-25 CCX adde temp spn mate
-+      GDEF, ALLOCATABLE :: SPN(:,:,:)
-+      ! 2020-06-25 CCX: add spn_matrix
-+      GDEF, ALLOCATABLE :: spin_mat(:,:)
-+      INTEGER :: spn_counter
-+      CHARACTER (len=60)       :: SPN_header
+@@ -347,6 +397,13 @@
        REAL(q), ALLOCATABLE :: ROTYLM(:,:)
        REAL(q), ALLOCATABLE :: HYBRID_ORBITAL(:)
  
-@@ -364,12 +420,14 @@
++      ! 2020-06-25 CCX added for spn matrix calc
++      GDEF, ALLOCATABLE :: SPN(:,:,:)
++      GDEF, ALLOCATABLE :: spin_mat(:,:)
++      INTEGER :: spn_counter
++      CHARACTER (len=60)       :: SPN_header
++      ! CCX_2019-05-06: end definition
++
+       LOGICAL, ALLOCATABLE :: EXCLUDE_BAND(:)
+       LOGICAL LUSE_BLOCH_PHASES
+       
+@@ -357,6 +414,10 @@
+       INTEGER num_bands_on_file,num_kpts_on_file,NPROJ_on_file
+ 
+       IF (.NOT.WANNIER90()) RETURN
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*---------------------------------------*"
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "* Entering the VASP2WANNIER90 interface *"
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*---------------------------------------*"
++
+ 
+ #ifdef MPI
+ !     IF (WDES%COMM_KINTER%NCPU.NE.1) THEN
+@@ -364,13 +425,15 @@
  !        STOP
  !     END IF
  #endif
@@ -104,15 +116,17 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 -        & 'MLWF_WANNIER90: ERROR: will not write spinors to UNK files, sorry ...'
 -         WRITE_UNK=.FALSE.
 -      ENDIF
+-!
 +!      IF (WRITE_UNK.AND.WDES%LNONCOLLINEAR) THEN
 +!         IF (IO%IU0>=0) WRITE(IO%IU0,*) &
 +!        & 'MLWF_WANNIER90: ERROR: will not write spinors to UNK files, sorry ...'
 +!         WRITE_UNK=.FALSE.
 +!      ENDIF
- !
++
  ! allocation
        ALLOCATE(S(WDES%NB_TOT,WDES%NB_TOT))
-@@ -449,8 +507,17 @@
+ 
+@@ -449,9 +512,19 @@
  
        ALLOCATE(proj_site(3,num_bands_tot),proj_l(num_bands_tot),proj_m(num_bands_tot), &
       &   proj_radial(num_bands_tot),proj_z(3,num_bands_tot),proj_x(3,num_bands_tot), &
@@ -124,14 +138,16 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +#endif
 +     &   )
        proj_site=0; proj_l=0; proj_m=0; proj_radial=0; proj_z=0; proj_x=0; proj_zona=0; exclude_bands=0
-+#ifdef VASP2WANNIER90v2
+ 
 +! CCX_2019-05-05: initialize proj_s and proj_s_qaxis.
++#ifdef VASP2WANNIER90v2
 +      proj_s=0; proj_s_qaxis=0
 +#endif
- 
++
        ! Only one node will do the actual work,
        ! otherwise all will write to wannier90.wout
-@@ -460,7 +527,12 @@
+ #ifdef VASP2WANNIER90
+@@ -460,7 +533,12 @@
       &                   kpt_latt,num_bands_tot,num_atoms,atom_symbols,atoms_cart, &
       &                   gamma_only,spinors,nntot,nnlist,nncell,num_bands,num_wann, &
       &                   proj_site,proj_l,proj_m,proj_radial,proj_z,proj_x,proj_zona, &
@@ -145,100 +161,111 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #endif
        ! Now communicate the output to the other nodes
        CALLMPI( M_sum_i(WDES%COMM,nntot,1) ) 
-@@ -476,6 +548,11 @@
-       CALLMPI( M_sum_d(WDES%COMM,proj_x,3*num_bands_tot) )
+@@ -477,6 +555,12 @@
        CALLMPI( M_sum_d(WDES%COMM,proj_zona,num_bands_tot) )
        CALLMPI( M_sum_i(WDES%COMM,exclude_bands,num_bands_tot) )
-+#ifdef VASP2WANNIER90v2
+ 
 +! CCX_2019-05-05: bcast proj_s and proj_s_qaxis
++#ifdef VASP2WANNIER90v2
 +      CALLMPI( M_sum_i(WDES%COMM,proj_s,num_bands_tot) )
 +      CALLMPI( M_sum_d(WDES%COMM,proj_s_qaxis,3*num_bands_tot) )
 +#endif
- 
++
        ALLOCATE(EXCLUDE_BAND(num_bands_tot))
        EXCLUDE_BAND=.FALSE. ; NEXCLB=0
-@@ -577,6 +654,68 @@
+       DO N=1,num_bands_tot
+@@ -576,6 +660,73 @@
+       ENDDO ki_loop
  
        IF (IO%IU6>=0.AND.WRITE_MMN_AMN) CLOSE(99)
- 
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*            MMN calculated.            *"
++
++
++      ALLOCATE(spin_mat((num_bands+1)*num_bands/2,3))
 +      ! 2020-06-25 CCX: write SPN matrix
 +      IF (WRITE_SPN .AND. WDES%COMM%NCPU.NE.1) THEN
-+          IF (IO%IU0>=0) WRITE(*,*) 'MLWF_WANNIER90: WRITE_SPN in parallel not supported, skipping.'
-+           WRITE_SPN=.FALSE.
++         IF (IO%IU0>=0) WRITE(*,*) 'MLWF_WANNIER90: WRITE_SPN only works in serial, skipping.'
++         WRITE_SPN=.FALSE.
 +      ENDIF
 +
 +      IF (IO%IU6>=0.AND.WRITE_SPN) THEN
-+        ALLOCATE(SPN(WDES%NB_TOT,WDES%NB_TOT,3))
-+	ALLOCATE(spin_mat((num_bands+1)*num_bands/2,3))
-+        IF (WDES%NRSPINORS==1) THEN
-+           IF (IO%IU0>=0) WRITE(*,*) 'MLWF_WANNIER90: ERROR: WRITE_SPN specified, but collinear calculation.'
-+           STOP
-+        ELSE
-+	  IF (SPN_FMTED) THEN
-+            OPEN(UNIT=99,FILE=seed_name//'.spn',FORM="FORMATTED",STATUS='REPLACE')
-+	    SPN_header = 'File generated by VASP: '//INFO%SZNAM1
-+            WRITE(99,'(A)') SPN_header
-+            WRITE(99,'(3I12)') num_bands,num_kpts
-+          ELSE
-+            OPEN(UNIT=99,FILE=seed_name//'.spn',FORM="UNFORMATTED",STATUS='REPLACE')
-+	    SPN_header = 'File generated by VASP: '//INFO%SZNAM1
-+            WRITE(99) SPN_header
-+            WRITE(99) num_bands,num_kpts
-+	  ENDIF
-+        ENDIF
++         ALLOCATE(SPN(WDES%NB_TOT,WDES%NB_TOT,3))
++         IF (WDES%NRSPINORS==1) THEN
++            IF (IO%IU0>=0) WRITE(*,*) 'MLWF_WANNIER90: ERROR: WRITE_SPN specified, but collinear calculation.'
++            STOP
++         ELSE
++            IF (SPN_FMTED) THEN
++               OPEN(UNIT=99,FILE=seed_name//'.spn',FORM="FORMATTED",STATUS='REPLACE')
++               SPN_header = 'File generated by VASP: '//INFO%SZNAM1
++               WRITE(99,'(A)') SPN_header
++               WRITE(99,'(3I12)') num_bands,num_kpts
++            ELSE
++               OPEN(UNIT=99,FILE=seed_name//'.spn',FORM="UNFORMATTED",STATUS='REPLACE')
++               SPN_header = 'File generated by VASP: '//INFO%SZNAM1
++               WRITE(99) SPN_header
++               WRITE(99) num_bands,num_kpts
++            ENDIF
++         ENDIF
 +      ENDIF
 +
 +      IF (WDES%NRSPINORS/=1.AND.WRITE_SPN) THEN
-+	IF (IO%IU0>=0) WRITE(IO%IU0,*) "Calculating SPN."
 +      ! runs over all k-points
 +      spn_ki_loop: DO NKI=1,num_kpts
 +         KI(:)=kpt_latt(:,NKI)
-+         
-+         CALL CALC_SPN_EXP(W,KI,P,CQIJ,LATT_CUR,T_INFO,SPN)
-+	    
-+	    !now, we nned to exclude some bands.
-+            NI=0
-+            spn_n_loop: DO N=1,WDES%NB_TOT
-+   	      IF (EXCLUDE_BAND(N)) CYCLE spn_n_loop
-+     	      spn_m_loop: DO M=1,N
-+      	        IF (EXCLUDE_BAND(M)) CYCLE spn_m_loop
-+      	        NI=NI+1
-+		DO spn_counter=1,3
-+      	          spin_mat(NI,spn_counter)=SPN(M,N,spn_counter)
-+		ENDDO
-+   	      ENDDO spn_m_loop
-+	    ENDDO spn_n_loop
 +
-+            IF (SPN_FMTED) THEN
-+              DO N=1,(num_bands+1)*num_bands/2
-+                IF (IO%IU6>=0.AND.WRITE_SPN) WRITE(99,'(2ES26.16)') (spin_mat(N,spn_counter), spn_counter=1,3)
-+              ENDDO
-+            ELSE
-+              IF (IO%IU6>=0.AND.WRITE_SPN) WRITE(99) ((spin_mat(N,spn_counter), spn_counter=1,3), N=1,(num_bands+1)*num_bands/2)
-+            ENDIF
++         CALL CALC_SPN_EXP(W,KI,P,CQIJ,LATT_CUR,T_INFO,SPN)
++
++         !now, we nned to exclude some bands.
++         NI=0
++         spn_n_loop: DO N=1,WDES%NB_TOT
++            IF (EXCLUDE_BAND(N)) CYCLE spn_n_loop
++               spn_m_loop: DO M=1,N
++                  IF (EXCLUDE_BAND(M)) CYCLE spn_m_loop
++                  NI=NI+1
++                  DO spn_counter=1,3
++                     spin_mat(NI,spn_counter)=SPN(M,N,spn_counter)
++                  ENDDO
++               ENDDO spn_m_loop
++         ENDDO spn_n_loop
++
++         ! writing spn matrix to file
++         IF (SPN_FMTED) THEN
++            DO N=1,(num_bands+1)*num_bands/2
++               IF (IO%IU6>=0.AND.WRITE_SPN) WRITE(99,'(2ES26.16)') (spin_mat(N,spn_counter), spn_counter=1,3)
++            ENDDO
++         ELSE
++               IF (IO%IU6>=0.AND.WRITE_SPN) WRITE(99) ((spin_mat(N,spn_counter), spn_counter=1,3), N=1,(num_bands+1)*num_bands/2)
++         ENDIF
 +      ENDDO spn_ki_loop
++
++      ! some deallocation for spn mat
 +      DEALLOCATE(spin_mat)
 +      DEALLOCATE(SPN)
 +
 +      IF (IO%IU6>=0.AND.WRITE_SPN) CLOSE(99)
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*            SPN calculated.            *"
 +      ENDIF
-+
+ 
        ! and we might want to read an existing amn file
        IF (READ_AMN) THEN
-       ! compute NPROJ 
-@@ -584,6 +723,11 @@
+@@ -584,9 +735,16 @@
        DO ISPINOR=1,WDES%NRSPINORS
        DO ICNTR=1,num_bands_tot
           IF (proj_l(ICNTR)==0.AND.proj_m(ICNTR)==0.AND.proj_radial(ICNTR)==0) CYCLE
-+#ifdef VASP2WANNIER90v2
 +! CCX_2019-05-05: only calculate corresponding spin channel
++#ifdef VASP2WANNIER90v2
 +         IF (WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==2) CYCLE
 +         IF (WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==1) CYCLE
 +#endif
++
           NPROJ=NPROJ+1
        ENDDO
        ENDDO
-@@ -643,11 +787,36 @@
++
+       ! check if amn file exists
+       IF (WDES%ISPIN==1) THEN
+          INQUIRE(FILE=seed_name//'.amn',EXIST=LAMN_FOUND)
+@@ -643,11 +801,36 @@
        ALLOCATE(ROTYLM((LMAX+1)**2,(LMAX+1)**2),HYBRID_ORBITAL((LMAX+1)**2))
  
        NPROJ=0 
@@ -266,18 +293,18 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +           spin_z_neg=.true.
 +        ENDIF
 +        ! CCX_2019-05-06: [start] if proj_s_qaxis lies along z, normal projections are done.
-+        IF (spin_z_pos .OR. spin_z_neg.or.WDES%NRSPINORS==1) THEN ! if not spinor, still use this routine.
-+          spinor1: DO ISPINOR=1,WDES%NRSPINORS
-+            IF (spin_z_pos.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==2) CYCLE spinor1
-+            IF (spin_z_pos.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==1) CYCLE spinor1
-+            ! if neg then swap up and down definition
-+            IF (spin_z_neg.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==1) CYCLE spinor1
-+            IF (spin_z_neg.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==2) CYCLE spinor1
++        IF (spin_z_pos .OR. spin_z_neg .OR. WDES%NRSPINORS==1) THEN ! if not spinor, still use this routine.
++        spinor1: DO ISPINOR=1,WDES%NRSPINORS
++           IF (spin_z_pos.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==2) CYCLE spinor1
++           IF (spin_z_pos.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==1) CYCLE spinor1
++           ! if neg then swap up and down definition
++           IF (spin_z_neg.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==1.AND.ISPINOR==1) CYCLE spinor1
++           IF (spin_z_neg.AND.WDES%NRSPINORS/=1.AND.proj_s(ICNTR)==-1.AND.ISPINOR==2) CYCLE spinor1
 +
           NPROJ=NPROJ+1
           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
           CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
-@@ -673,9 +842,9 @@
+@@ -673,9 +856,9 @@
           ENDDO
  
  
@@ -289,25 +316,23 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
              CALL CALC_OVERLAP_GN( &
             &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
              ! and rotate them in accordance with proj_z and proj_x
-@@ -712,15 +881,109 @@
+@@ -712,15 +895,111 @@
                 A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
              ENDDO
  
--         ENDDO kpoints
 +            ENDDO kpoints1
- 
-          DEALLOCATE(FTMP,FR,FGTMP,FG)
- 
-          IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') 'Projection ',NPROJ,' done.'
--!        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
--!        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
++
++         DEALLOCATE(FTMP,FR,FGTMP,FG)
++
++         IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') '*          Projection ',NPROJ,' done.         *'
 +      !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
 +      !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
-+          ENDDO spinor1
++        ENDDO spinor1
 +        ! CCX_2019-05-06: [end] end normal routine.
++
 +        ELSE ! CCX_2019-05-06: quantization axis does not lies along z axis, do special projection routine.
 +        ! CCX_2019-05-06: generate spinor eigenvectors.
-+          ! CCX_2019-06-10: renormalize spin quantization axis
++        ! CCX_2019-06-10: renormalize spin quantization axis
 +          xnorm=SQRT(proj_s_qaxis(1,ICNTR)*proj_s_qaxis(1,ICNTR)+proj_s_qaxis(2,ICNTR)*proj_s_qaxis(2,ICNTR)+proj_s_qaxis(3,ICNTR)*proj_s_qaxis(3,ICNTR))
 +          proj_s_qaxis(1,ICNTR)=proj_s_qaxis(1,ICNTR)/xnorm
 +          proj_s_qaxis(2,ICNTR)=proj_s_qaxis(2,ICNTR)/xnorm
@@ -326,7 +351,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +          ! 2020-06-15 CCX: we no longer need ISPINOR loop since we are using full spinor guiding functions.
 +          !spinor: DO ISPINOR=1,WDES%NRSPINORS
 +           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
-+            CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
++          CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
 +#ifdef debug
 +            IF (IO%IU6>=0) THEN
 +               WRITE(*,'(I4,3F14.7)') ICNTR,proj_site(1:3,ICNTR)
@@ -335,34 +360,35 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +               ENDDO
 +            ENDIF
 +#endif
-+            ! translate between VASP and the orbital definition of wannier90
-+            CALL WANNIER90_ORBITAL_DEFINITIONS(proj_l(ICNTR),proj_m(ICNTR),HYBRID_ORBITAL)
-+            ! setup the radial functions (real space)
-+            CALL SETRGRID(RSTART/proj_zona(ICNTR),REND,H,R)
-+            ALLOCATE(FTMP(R%NMAX),FR(R%NMAX,LMAX+1))
-+            ALLOCATE(FGTMP(NMAX,5),FG(NMAX,5,LMAX+1))
-+            ! For now we use the same radial function for all L
-+            DO L=0,LMAX
-+               CALL RADIAL_FUNCTION(proj_radial(ICNTR),R,proj_zona(ICNTR),FTMP)
-+               CALL BESSEL_TRANSFORM_RADIAL_FUNCTION(L,R,FTMP,REAL(SQRT(2._q*INFO%ENMAX/HSQDTM)/NMAX,KIND=q),FGTMP)
-+               FR(:,L+1)=FTMP; FG(:,:,L+1)=FGTMP
-+            ENDDO
++          ! translate between VASP and the orbital definition of wannier90
++          CALL WANNIER90_ORBITAL_DEFINITIONS(proj_l(ICNTR),proj_m(ICNTR),HYBRID_ORBITAL)
 +
++          ! setup the radial functions (real space)
++          CALL SETRGRID(RSTART/proj_zona(ICNTR),REND,H,R)
++          ALLOCATE(FTMP(R%NMAX),FR(R%NMAX,LMAX+1))
++          ALLOCATE(FGTMP(NMAX,5),FG(NMAX,5,LMAX+1))
++
++          ! For now we use the same radial function for all L
++          DO L=0,LMAX
++             CALL RADIAL_FUNCTION(proj_radial(ICNTR),R,proj_zona(ICNTR),FTMP)
++             CALL BESSEL_TRANSFORM_RADIAL_FUNCTION(L,R,FTMP,REAL(SQRT(2._q*INFO%ENMAX/HSQDTM)/NMAX,KIND=q),FGTMP)
++             FR(:,L+1)=FTMP; FG(:,:,L+1)=FGTMP
++          ENDDO
 +
 +         !        CALL START_TIMING("T2")
-+            ! runs over all k-points
-+            kpoints : DO NKI=1,num_kpts
-+               CALL CALC_OVERLAP_GN_ALL( &
-+              &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,FAC,P,CQIJ,LATT_CUR,T_INFO,A)
-+               ! and rotate them in accordance with proj_z and proj_x
-+               AP=0
-+               DO M=1,WDES%NB_TOT
-+               DO N=1,(LMAX+1)**2
-+                  DO NP=1,(LMAX+1)**2
-+                     AP(M,N)=AP(M,N)+A(M,NP)*ROTYLM(N,NP)
-+                  ENDDO
-+               ENDDO
-+               ENDDO
++          ! runs over all k-points
++          kpoints : DO NKI=1,num_kpts
++             CALL CALC_OVERLAP_GN_ALL( &
++            &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,FAC,P,CQIJ,LATT_CUR,T_INFO,A)
++             ! and rotate them in accordance with proj_z and proj_x
++             AP=0
++             DO M=1,WDES%NB_TOT
++             DO N=1,(LMAX+1)**2
++                DO NP=1,(LMAX+1)**2
++                   AP(M,N)=AP(M,N)+A(M,NP)*ROTYLM(N,NP)
++                ENDDO
++             ENDDO
++             ENDDO
 +#ifdef debug
 +               IF (IO%IU6>=0) THEN
 +                  WRITE(*,'(I4,3F14.7)') NKI,kpt_latt(1:3,NKI)
@@ -388,22 +414,46 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +                  A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
 +               ENDDO
 +
-+            ENDDO kpoints
-+
-+            DEALLOCATE(FTMP,FR,FGTMP,FG)
-+
+          ENDDO kpoints
+ 
+          DEALLOCATE(FTMP,FR,FGTMP,FG)
+ 
+-         IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') 'Projection ',NPROJ,' done.'
+-!        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
+-!        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
 +         !  IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A,I3,A)') 'Spin channel',ISPINOR,' done.'
 +         !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
 +         !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
 +      !ENDDO spinor
-+          IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') 'Projection ',NPROJ,' done. [q_axis changed]'
++          IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') '* Projection ',NPROJ,' done. [q_axis changed] *'
 +        ENDIF ! quantization IF
        ENDDO sites
 -      ENDDO spinor
  
        DEALLOCATE(A,AP,ROTYLM,HYBRID_ORBITAL)
  
-@@ -811,14 +1074,24 @@
+@@ -733,9 +1012,10 @@
+          IF (IO%IU0>=0) WRITE(*,*) 'MLWF_WANNIER90: ERROR: number of projections not equal to num_wann',NPROJ,num_wann
+          STOP
+       ENDIF
+-
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*            AMN calculated.            *"
+       ENDIF ! finished computing A_matrix
+ 
++
+       ! write A_matrix to file
+       LUSE_BLOCH_PHASES=.FALSE.
+       IF (NPROJ/=0) THEN
+@@ -804,6 +1084,8 @@
+          ENDDO
+       ENDDO
+       IF (IO%IU6>=0.AND.WRITE_MMN_AMN) CLOSE(99)
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*            EIG written.               *"
++
+ 
+       ! and last but not least we may need to write UNK files
+       ! which is a bit tricky since the bands at a certain k-point
+@@ -811,19 +1093,31 @@
        ! to make matters worse, WANNIER90 works with the full k-mesh
        ! whereas VASP uses the symmetry reduced one.
   100  FORMAT('UNK',I5.5,'.',I1)
@@ -428,8 +478,15 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +            CALL WRITE_WAVE_FUNCTIONS(W,kpt_latt(:,NKI),ISP,EXCLUDE_BAND,P,LATT_CUR,UNK_FMTED,99)
              IF (IO%IU6>=0) CLOSE(99)
           ENDDO
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*            UNK written.               *"
        ENDIF
-@@ -1880,6 +2153,183 @@
+ 
+       ENDDO spin
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*---------------------------------------*"
+    
+       ! Write information on seed_name.win
+       IF (IO%IU6>=0) THEN
+@@ -1880,6 +2174,186 @@
        RETURN
        END SUBROUTINE CALC_OVERLAP_GN
  
@@ -532,7 +589,10 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +    END SUBROUTINE CALC_OVERLAP_GN_ALL
 +
 +!******************** SUBROUTINE CALC_SPN_EXP ***********************
-+!
++! 2020-06-15 CCX: a modified version of CALC_OVERLAP_GN
++!                 calculates expectation value of the
++!                 Pauli Matrix. Uses W1_SPN_DOT in wave_high.F
++! Note: This routine only works in serial.
 +!***********************************************************************
 +      SUBROUTINE CALC_SPN_EXP( &
 +     &   W,K,P,CQIJ,LATT_CUR,T_INFO,S &
@@ -613,7 +673,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
  !******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm ***************
  !      
-@@ -1989,11 +2439,129 @@
+@@ -1989,11 +2463,129 @@
        RETURN
        END SUBROUTINE CONSTRUCT_FUNCTION_RYlm
  
@@ -734,7 +794,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +      DEALLOCATE(G,FG,XS,YS,ZS,CFAKTX,YLM)
 +
 +      RETURN
-+    END SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL
++      END SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL
  
  !******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
  !      
@@ -744,7 +804,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        USE pead
        USE pseudo
        USE lattice
-@@ -2006,6 +2574,7 @@
+@@ -2006,6 +2598,7 @@
        INTEGER ISP,IU
        REAL(q) K(3)
        LOGICAL EXCLUDE_BAND(W%WDES%NB_TOT) 
@@ -752,7 +812,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
       ! local variables
        TYPE(wavespin) WP
        TYPE(wavefuna) WK
-@@ -2014,7 +2583,7 @@
+@@ -2014,7 +2607,7 @@
  
        TYPE(rotation_handle), POINTER :: ROT_HANDLE
  
@@ -761,7 +821,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
        INTEGER NX,NY,NZ,NC,NGX,NGY,NGZ,IND,I,NWRITTEN
        INTEGER, PARAMETER :: NSTRIP=1
  
-@@ -2047,7 +2616,12 @@
+@@ -2047,7 +2640,12 @@
           CALL NEWWAV(WCOLLECT(NB),WDESK,.TRUE.)
        ENDDO
  
@@ -774,7 +834,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  
        NWRITTEN=0 
  
-@@ -2073,7 +2647,14 @@
+@@ -2073,7 +2671,14 @@
  #ifdef gammareal
                       WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
  #else
@@ -789,7 +849,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #endif
                    ENDDO
                 ENDDO
-@@ -2086,7 +2667,14 @@
+@@ -2086,7 +2691,14 @@
  #ifdef gammareal
                       WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
  #else
@@ -804,7 +864,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #endif
                    ENDDO
                 ENDDO
-@@ -2094,13 +2682,36 @@
+@@ -2094,13 +2706,36 @@
                 WRITE(*,'(A)') 'WRITE_WAVE_FUNCTIONS: ERROR: W1 grid not set'
                 STOP
              ENDIF
@@ -841,7 +901,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #ifdef MPI
              ENDIF
  #endif
-@@ -2120,7 +2731,6 @@
+@@ -2120,7 +2755,6 @@
        RETURN
        END SUBROUTINE WRITE_WAVE_FUNCTIONS
  
@@ -849,13 +909,20 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  !******************** SUBROUTINE OCCURS_IN_FILE ************************
  !      
  !***********************************************************************
+@@ -2632,4 +3266,3 @@
+ 1001     FORMAT(2I6,2F26.16)
+       ENDSUBROUTINE WRITE_WANPROJ_FILE
+       END MODULE mlwf
+-
 diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 --- src/wave_high.F	2017-04-20 10:04:00.000000000 +0100
-+++ ../vasp.5.4.4_mod/src/wave_high.F	2020-06-25 17:50:31.854092339 +0100
-@@ -54,6 +54,17 @@
++++ ../vasp.5.4.4_mod/src/wave_high.F	2020-06-27 14:53:10.243515397 +0100
+@@ -53,6 +53,18 @@
+      END SUBROUTINE ECCP_NL
    END INTERFACE
  
-   INTERFACE
++! 2020-06-25 CCX: Addde for spn calculation
++  INTERFACE
 +     SUBROUTINE ECCP_NL_SPN(LMDIM,LMMAXC,PAULI,CDIJ,CPROJ1,CPROJ2,CNL)
 +       USE prec
 +       COMPLEX(q):: PAULI
@@ -866,24 +933,22 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +     END SUBROUTINE ECCP_NL_SPN
 +  END INTERFACE
 +
-+  INTERFACE
+   INTERFACE
       SUBROUTINE OVERL(WDES1, LOVERL, LMDIM, CQIJ, CPROF, CRESUL)
         USE wave
-        TYPE (wavedes1) WDES1
-@@ -634,6 +645,120 @@
+@@ -634,6 +646,116 @@
        
    END FUNCTION W1_DOT
  
 +!***********************************************************************
 +!
++! 2020-06-25 CCX: added for spn calculation
 +! calculate the dot product between two wavefunctions
-+!  C=   W1^* x W2
++!  C=   <W1| Sigma| W2>
 +! this is a substitue for the routine CINDPROD but mind
 +! the W1 and W2 are interchanged
 +!
-+!
 +!***********************************************************************
-+
 +FUNCTION W1_SPN_DOT(W1, W2, CQIJ) RESULT (C)
 +  IMPLICIT NONE
 +  TYPE (wavefun1)    W1, W2
@@ -901,7 +966,6 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +
 +!  ALLOCATE(SCQIJ_x(1,1,W1%WDES1%NTYP,4),SCQIJ_y(1,1,W1%WDES1%NTYP,4),SCQIJ_z(1,1,W1%WDES1%NTYP,4))
 +
-+
 +  ! DO ISPINOR=0,W1%WDES1%NRSPINORS-1
 +  !   DO ISPINOR_=0,W1%WDES1%NRSPINORS-1
 +  cdum1=ZDOTC( W1%WDES1%NPL/2,W1%CW(1),1,W2%CW(1+W1%WDES1%NPL/2*(W1%WDES1%NRSPINORS-1)),1)
@@ -910,7 +974,7 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +  C(2)=cmplx(0._q,1._q,q)*(cdum2-cdum1)
 +  C(3)=zdotc(W1%WDES1%NPL/2,W1%CW(1),1,W2%CW(1),1)&
 +         -zdotc(W1%WDES1%NPL/2,W1%CW(1+W1%WDES1%NPL/2*(W1%WDES1%NRSPINORS-1)),1,W2%CW(1+W1%WDES1%NPL/2*(W1%WDES1%NRSPINORS-1)),1)
-+  
++
 +  ! getme SCQIJ
 +!  WRITE(*,*) "number of type", W1%WDES1%NTYP
 +!  WRITE(*,*) "CQIJ: ",CQIJ(1,1,1,:)
@@ -930,7 +994,7 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +!    SCQIJ_z(1,1,NI,1+1+2*0)=-1._q*CQIJ(1,1,NI,1+1+2*0)
 +!    SCQIJ_z(1,1,NI,1+1+2*1)=-1._q*CQIJ(1,1,NI,1+1+2*1)
 +!  ENDDO
-+  
++
 +!  WRITE(*,*) "SCQIJ_x: ",SCQIJ_x(1,1,1,:)
 +!  WRITE(*,*) "SCQIJ_y: ",SCQIJ_y(1,1,1,:)
 +!  WRITE(*,*) "SCQIJ_z: ",SCQIJ_z(1,1,1,:)
@@ -952,23 +1016,23 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +           LMMAXC=W1%WDES1%LMMAX(NT)
 +           IF (LMMAXC/=0) THEN
 +              DO NI=NIS,W1%WDES1%NITYP(NT)+NIS-1
-+                IF (ISPINOR==0 .AND. ISPINOR_==0 ) THEN
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,-1._q,q),CQIJ(1,1,NI,1+0+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
-+	        ELSEIF (ISPINOR==0 .AND. ISPINOR_==1 ) THEN
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,-1._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
-+	        ELSEIF (ISPINOR==1 .AND. ISPINOR_==0 ) THEN
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,1._q,q),CQIJ(1,1,NI,1+0+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
-+	        ELSEIF (ISPINOR==1 .AND. ISPINOR_==1 ) THEN
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,1._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
-+                  CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
-+		ENDIF
++                 IF (ISPINOR==0 .AND. ISPINOR_==0 ) THEN
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,-1._q,q),CQIJ(1,1,NI,1+0+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
++                 ELSEIF (ISPINOR==0 .AND. ISPINOR_==1 ) THEN
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,-1._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
++                 ELSEIF (ISPINOR==1 .AND. ISPINOR_==0 ) THEN
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,1._q,q),CQIJ(1,1,NI,1+0+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+0+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
++                 ELSEIF (ISPINOR==1 .AND. ISPINOR_==1 ) THEN
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,1._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
++                 ENDIF
 +                 NPRO = LMMAXC+NPRO
 +                 NPRO_= LMMAXC+NPRO_
 +              ENDDO
@@ -983,20 +1047,19 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +  ENDIF
 +  !WRITE(*,*) C
 +  CALLMPI( M_sum_g(W1%WDES1%COMM_INB, C(1), 3))
-+  !WRITE(*,*) "Am I fucked?"
 +  !DEALLOCATE(SCQIJ_x,SCQIJ_y,SCQIJ_z)
-+  !WRITE(*,*) "fuck this shit?"
 +
 +END FUNCTION W1_SPN_DOT
  
  !***********************************************************************
  !
-@@ -3158,6 +3283,42 @@
+@@ -3158,6 +3280,43 @@
  
    END SUBROUTINE ECCP_NL
  
 +!************************* SUBROUTINE ECCP_NL_SPN   ************************
 +!
++! 2020-06-25 CCX: added for .spn calculation in mlwf.F
 +! this subroutine calculates the expectation value of <c|SPN*H|cp>
 +! where c and cp are two wavefunctions; non local part only
 +! for one ion only
@@ -1008,7 +1071,7 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +  SUBROUTINE ECCP_NL_SPN(LMDIM,LMMAXC,PAULI,CDIJ,CPROJ1,CPROJ2,CNL)
 +    USE prec
 +    IMPLICIT NONE
-+    COMPLEX(q) :: PAULI
++    COMPLEX(q) :: PAULI ! paulimatrix element
 +    GDEF      CNL
 +    INTEGER LMDIM, LMMAXC
 +    OVERLAP CDIJ(LMDIM,LMDIM)
@@ -1034,9 +1097,3 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
  
  !************************* SUBROUTINE OVERL ***************************
  !
-@@ -3434,3 +3595,5 @@
-     ENDDO spinor
- 
-   END SUBROUTINE OVERL1_CCDIJ
-+
-+
