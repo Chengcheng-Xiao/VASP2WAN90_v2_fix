@@ -10,6 +10,8 @@ Fixing the `VAPS2WANNIER90v2` interface.
   - additionally, change the format of the `UNK` files by adding `LUNK_FMTED = .TRUE.` to your `INACR` file.
 - Write `.spn` files with `LWRITE_SPN=.TRUE.` tag. (This only works in serial)
   - additionally, change the format of the `.spn` files by adding `LSPN_FMTED = .TRUE.` to your `INACR` file.
+- Control which collinear spin channel to compute by setting `W90_SPIN`
+  - Can use different projections for up/down channels separately. Only need to prepare `seed_name.up.win` and `seed_name.dn.win`.
 
 ## Compile
 
@@ -28,14 +30,15 @@ LLIBS+=/path/to/your/wannier90_distro/libwannier.a
 ## Keywords
 A list of useful keywords:
 
-|      Tag       |                               meaning                                    |
-|:--------------:|:------------------------------------------------------------------------:|
-|   LWANNIER90   |                  Do we want to use the interface?                        |
-|   LWRITE_UNK   |                     Do we want the `UNK` files?                          |
-|   LUNK_FMTED   |               should the `UNK` files be human-redable?                   |
-|   LWRITE_SPN   |         Do we want the `.spn` files? (can only run in serial)            |
-|   LSPN_FMTED   |               should the `.spn` files be human-redable?                  |
-| LWRITE_MMN_AMN | Do we want the `.mmn` and `.amm` files? (they will still be calculated)  |
+|      Tag       |                               meaning                                    | value                 |
+|:--------------:|:------------------------------------------------------------------------:|:---------------------:|
+|   LWANNIER90   |                  Do we want to use the interface?                        | TRUE/FALSE            |
+|   LWRITE_UNK   |                     Do we want the `UNK` files?                          | TRUE/FALSE            |
+|   LUNK_FMTED   |               should the `UNK` files be human-redable?                   | TRUE/FALSE            |
+|   LWRITE_SPN   |         Do we want the `.spn` files? (can only run in serial)            | TRUE/FALSE            |
+|   LSPN_FMTED   |               should the `.spn` files be human-redable?                  | TRUE/FALSE            |
+|    W90_SPIN    |     Which collinear spin channel to compute?                             | 0->all, 1->up, 2->down|
+| LWRITE_MMN_AMN | Do we want the `.mmn` and `.amm` files? (they will still be calculated)  | TRUE/FALSE            |
 
 ## Pro Tips
 1. To Calculate `.spn`, you can set `LWRITE_SPN=.TRUE.` in their `INCAR`. Since this function can only be achieved in serial (or MPI with one process), be extra careful with how many cores you are using.
@@ -43,6 +46,8 @@ A list of useful keywords:
 2. If you have a pre-converged calculation, simply set `ALGO=None` and `NELM=1` while read in the `WAVECAR` and the `CHGCAR` to initialize `VASP2WANNIER90` interface. This will probably save you some time.
 
 3. Dont write the `unit_cell`, `atom`, `mp_grid`, `kpoints`, and `spinors` in your `.win` file. VASP will fill in these for you automatically.
+
+4. For collinear spin calculation, prepare two `.win` files (`wannier90.up.win` and `wannier90.dn.win`) separately for spin-up (W90_SPIN=1) and spin-down calculation(W90_SPIN=2). If you want to compute them all together (`W90_SPIN=0`), both files need to be present! Also, don't forget to put `spin=down` in your `wannier90.dn.win` file if you want to plot the WFs.
 
 ## Original Symptoms
 In VASP (version 5.4.4), the VASP2WANNIER90v2 compiler flag was added as a interface to the [WANNIER90](https://github.com/wannier-developers/wannier90) (version 2.X) program.
