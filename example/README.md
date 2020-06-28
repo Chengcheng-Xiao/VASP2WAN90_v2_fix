@@ -10,7 +10,7 @@ A simple example of using the interface.
 5. Run wannier90.x in `3-wannier_gen` to get `wannier90_00001.xsf` plot.
 6. Run postw90.x in `3-wannier_gen` to get plottable bandstructure with spin expectations.
 
-#### Post run
+#### More ideas
 - Inspect the shape of the 1st wannier function. Does it look like `pz` orbital on the first Bi atom?
 - Change `wannier_plot_spinor_mode` to `up` or `down`, rerun `wannier90.x`, can you spot the difference?
 - Change spin quantization axis, then rerun `wannier90.x`. Check the shape of the 1st Wannier function.
@@ -22,7 +22,7 @@ A simple example of using the interface.
 4. Run VASP in `2-wannier_gen` to get `UNK`, `.mmn`, `.amn`, file.
 5. Run wannier90.x in `2-wannier_gen` to get `wannier90.up_00001.xsf` plot.
 
-#### Post run
+#### More ideas
 - Inspect the shape of the 1st Wannier function (up-spin channel). Does it look like `pz` orbital on the first Bi atom?
 - Inspect the shape of the 1st Wannier function (dn-spin channel). Does it look like `s` orbital on the first Bi atom?
 - Change `W90_SPIN` to `1` or `2`, rerun VASP, can you spot the difference in the stdout?
@@ -33,5 +33,5 @@ A simple example of using the interface.
 4. Run VASP in `2-wannier_gen` to get `UNK`, `.mmn`, `.amn`, file.
 5. Run wannier90.x in `2-wannier_gen` to get `wannier90_00001.xsf` plot.
 
-#### Post run
+#### More ideas
 - Inspect the shape of the 1st wannier function. Does it look like `pz` orbital on the first Bi atom?
