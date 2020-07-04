@@ -27,8 +27,10 @@ __THIS FIX ONLY WORKS WITH VASP v5.4.4__
 
 For this patch to work, you have to recompile VASP from scratch.
 
-If you are not familiar with VASP's compilation process, click [here]()
-Also, you should have a preinstalled `libwannier.a` file. if you dont know what does this mean, check out wannier90's user guide.
+If you are not familiar with VASP's compilation process, click [here](https://www.vasp.at/wiki/index.php/Installing_VASP.5.X.X).
+
+Also, you should have a preinstalled `libwannier.a`.
+If you don't know what it is, check out wannier90's user guide.
 
 To apply the patch, put the `mlwf.patch` file in the root directory of your VASP distro. and type:
 ```
@@ -46,7 +48,7 @@ The `VASP2WANNIER90` interface is fully incorporated in the VASP package, this m
 For full documentation, see [wiki](https://github.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/wiki).
 
 ### Keywords
-A list of usefull keywords:
+A list of useful keywords:
 
 | Tag            | meaning                                         | value                 | default          |
 |:--------------:|:-----------------------------------------------:|:---------------------:|:----------------:|
@@ -64,4 +66,4 @@ A list of usefull keywords:
 
 
 ## Contributing
-Issues and pull-requests are welcomed, feel free to ask anything.
+Issues and pull-requests are welcome, feel free to ask anything [E-mail](iconxicon@me.com).
