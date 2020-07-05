@@ -60,9 +60,10 @@ A list of useful keywords:
 |   LWRITE_AMN   | Do we want to write `.mmn` file?                | TRUE/FALSE            | TRUE             |
 |   LWRITE_EIG   | Do we want to write `.eig` file?                | TRUE/FALSE            | TRUE             |
 |   LWRITE_UNK   | Do we want the `UNK` files?                     | TRUE/FALSE            | FALSE            |
-|   LUNK_FMTED   | Do we want the `UNK` files be human-redable?    | TRUE/FALSE            | FALSE            |
+|   LUNK_FMTED   | Do we want the `UNK` files be human-readable?   | TRUE/FALSE            | FALSE            |
+|   LREDUCE_UNK  | Do we want the `UNK` files be reduced in size?  | TRUE/FALSE            | FALSE            |
 |   LWRITE_SPN   | Do we want the `.spn` files? (Serial only)      | TRUE/FALSE            | FALSE            |
-|   LSPN_FMTED   | Do we want the `.spn` files be human-redable?   | TRUE/FALSE            | FALSE            |
+|   LSPN_FMTED   | Do we want the `.spn` files be human-readable?  | TRUE/FALSE            | FALSE            |
 
 
 ## Contributing
