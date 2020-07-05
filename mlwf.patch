@@ -1,6 +1,6 @@
 diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 --- src/mlwf.F	2017-04-20 10:03:58.000000000 +0100
-+++ ../vasp.5.4.4_mod/src/mlwf.F	2020-07-05 14:28:52.843498235 +0100
++++ ../vasp.5.4.4_mod/src/mlwf.F	2020-07-05 21:52:18.430979695 +0100
 @@ -6,12 +6,26 @@
   
        ! write the wave functions to UNK files
@@ -1223,7 +1223,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #endif
                    ENDDO
                 ENDDO
-@@ -2094,13 +2884,80 @@
+@@ -2094,13 +2884,84 @@
                 WRITE(*,'(A)') 'WRITE_WAVE_FUNCTIONS: ERROR: W1 grid not set'
                 STOP
              ENDIF
@@ -1239,11 +1239,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #ifdef MPI
              IF (WP%WDES%COMM%NODE_ME==WP%WDES%COMM%IONODE) THEN 
  #endif
++
 +            ! 2020-07-04 CCX: reduce UNK matrix, cannot just write it because Do loop will change binary format
 +            IF (REDUCE_UNK) THEN
 +            IF (WP%WDES%NRSPINORS/=1) THEN
 +              DO ISPINOR=0,1
-+	      POS_RED=0
++                POS_RED=0
 +              DO IZ=1,NGZ,2
 +              DO IY=1,NGY,2
 +              DO IX=1,NGX,2
@@ -1265,12 +1266,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +              ENDDO
 +            ENDIF
 +            ENDIF
-+            
 +
 +               ! 2020-06-22 CCX: added for non-collinear WF plot
 +               IF (WP%WDES%NRSPINORS/=1) THEN
 +                 IF (UNK_FMTED) THEN
 +                   DO ISPINOR=0,1
++                     ! 2020-07-04 CCX: reduce wfc
 +                     IF (REDUCE_UNK) THEN
 +                         WRITE(IU,'(2ES20.10)') (WVFN_RED(I),I=1+((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2)*ISPINOR,((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2)+((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2)*ISPINOR)
 +                     ELSE
@@ -1279,6 +1280,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +                   ENDDO
 +                 ELSEIF (.NOT. UNK_FMTED) THEN
 +                   DO ISPINOR=0,1
++                     ! 2020-07-04 CCX: reduce wfc
 +                     IF (REDUCE_UNK) THEN
 +                       WRITE(IU) (WVFN_RED(I),I=1+((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2)*ISPINOR,((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2)+((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2)*ISPINOR)
 +                     ELSE
@@ -1288,12 +1290,14 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +                 ENDIF
 +               ELSEIF (WP%WDES%NRSPINORS==1) THEN
 +                 IF (UNK_FMTED) THEN
++                   ! 2020-07-04 CCX: reduce wfc
 +                   IF (REDUCE_UNK) THEN
 +                     WRITE(IU,'(2ES20.10)') (WVFN_RED(I),I=1,((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2))
 +                   ELSE
 +                     WRITE(IU,'(2ES20.10)') (WVFN(I),I=1,NGX*NGY*NGZ)
 +                   ENDIF
 +                 ELSEIF (.NOT. UNK_FMTED) THEN
++                   ! 2020-07-04 CCX: reduce wfc
 +                   IF (REDUCE_UNK) THEN
 +                     WRITE(IU) (WVFN_RED(I),I=1,((NGX+1)/2)*((NGY+1)/2)*((NGZ+1)/2))
 +                   ELSE
@@ -1304,12 +1308,12 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  #ifdef MPI
              ENDIF
  #endif
-@@ -2115,12 +2972,11 @@
-          CALL DELWAV(WCOLLECT(NB),.TRUE.)
+@@ -2116,11 +2977,12 @@
        ENDDO
        DEALLOCATE(WSTRIP,WCOLLECT)
--      DEALLOCATE(WVFN)
-+      DEALLOCATE(WVFN,WVFN_RED)
+       DEALLOCATE(WVFN)
++      ! 2020-07-04 deallocate reduced wavefunctions
++      IF (REDUCE_UNK) DEALLOCATE(WVFN_RED)
  
        RETURN
        END SUBROUTINE WRITE_WAVE_FUNCTIONS
@@ -1318,7 +1322,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
  !******************** SUBROUTINE OCCURS_IN_FILE ************************
  !      
  !***********************************************************************
-@@ -2632,4 +3488,3 @@
+@@ -2632,4 +3494,3 @@
  1001     FORMAT(2I6,2F26.16)
        ENDSUBROUTINE WRITE_WANPROJ_FILE
        END MODULE mlwf
