@@ -16,6 +16,7 @@ This project provides a patch for the [VASP](https://www.vasp.at/) code, fixing 
 - New spinor projection method (specify spinor channel, quantization axis)
 - Write non-collinear UNK file (`UNKxxxxx.NC`).
   - Choose the format of the `UNK` files.
+  - Reduce the size of the `UNK` files.
 - Write `.spn` files.
   - Choose the format of the `.spn` files
 - Control which collinear spin channel to compute.
