@@ -1466,29 +1466,6 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
  
  !***********************************************************************
  !
-@@ -2972,10 +3094,11 @@
-           DO NB=1,W%WDES%NBANDS
-              CALL W1_COPY(ELEMENT(W, WDES1, NB, ISP), W1)
-              CALL FFTWAV_W1(W1)
--             DO ISPINOR =0,WDES1%NRSPINORS-1
--                ! chose a random complex direction and project onto this
--                AVERAGE_PHASE=EXP(CITPI*RANE())
-+             ! chose random phase in 1st and 4th quadrant, avoid proximity to +-i
-+             AVERAGE_PHASE=EXP(CITPI*(RANE()-0.5)/2.1)
-                 CALLMPI (M_bcast_z( WDES1%COMM_INB, AVERAGE_PHASE, 1))
-+
-+             DO ISPINOR =0,WDES1%NRSPINORS-1
-                 DO N=1,WDES1%GRID%RL%NP
-                    IF (LPHASE) THEN
-                       W1%CR(N+ISPINOR*WDES1%GRID%MPLWV)=CONJG(CPHASE(N))*REAL(W1%CR(N+ISPINOR*WDES1%GRID%MPLWV)*CPHASE(N)*AVERAGE_PHASE,q) & 
-@@ -2985,6 +3108,7 @@
-                       *(1.0_q/WDES1%GRID%NPLWV)
-                    ENDIF
-                 ENDDO
-+
-                 CALL FFTEXT(WDES1%NGVECTOR, WDES1%NINDPW(1), W1%CR(1+ISPINOR*WDES1%GRID%MPLWV),W%CW(1+ISPINOR*WDES1%NGVECTOR,NB,NK,ISP),WDES1%GRID,.FALSE.)
-              ENDDO
-           ENDDO
 @@ -3158,6 +3282,43 @@
  
    END SUBROUTINE ECCP_NL
