@@ -1,39 +1,60 @@
+<table align="center"><tr><td align="center" width="9999">
+
 # VASP2WAN90_v2_fix
+
+
+<a href="https://github.com/Chengcheng-Xiao/VASP2WAN90_v2_fix" alt="Star">
+<img src="https://img.shields.io/github/stars/Chengcheng-Xiao/VASP2WAN90_v2_fix?style=flat-square" /></a>
+
+<a href="https://github.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/fork" alt="Fork">
+<img src="https://img.shields.io/github/forks/Chengcheng-Xiao/VASP2WAN90_v2_fix?style=flat-square" /></a>
+
+<a href="https://github.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/wiki" alt="Wiki">
+<img src="https://img.shields.io/badge/-wiki-brightgreen?style=flat-square" /></a>
+
+<a href="https://twitter.com/iconxicon" alt="Twitter">
+<img src="https://img.shields.io/twitter/follow/iconxicon ?style=flat-square&logo=twitter" /></a>
+
+
+
 This project provides a patch for the [VASP](https://www.vasp.at/) code, fixing the `VASP2WANNIER90v2` interface with additional abilities.
+</td></tr></table>
 
-## Table of Contents
 
-* [ABILITIES](#ABILITEIS)
+<!-- ## Table of Contents
+
+* [Abilities](#Abilities)
 * [Installation](#Installation)
 * [Usage](#Usage)
   * [Keywords](#Keywords)
 * [Roadmap](#Roadmap)
-* [Contributing](#Contributing)
+* [Contributing](#Contributing) -->
 
-## ABILITIES
+## Abilities
 
-- Calculate non-collinear Wannier functions ("the fix")
-- New spinor projection method (specify spinor channel, quantization axis)
-- Write non-collinear UNK file (`UNKxxxxx.NC`).
+- Calculate non-collinear Wannier functions.
+- Support spinor projection method (specify spinor channel, quantization axis).
+- New and improved UNK files:
+  - Write non-collinear UNK files (`UNKxxxxx.NC`).
   - Choose the format of the `UNK` files.
   - Reduce the size of the `UNK` files.
 - Write `.spn` files.
   - Choose the format of the `.spn` files
 - Control which collinear spin channel to compute.
-- The ability to control wether to calculate and to write `MMN` and `AMN` files.
+- Control whether to calculate/write `.mmn` and `.amn` files.
 
 ## Installation
 
 __THIS FIX ONLY WORKS WITH VASP v5.4.4__
 
-For this patch to work, you have to recompile VASP from scratch.
+For this patch to work, you have to recompile VASP.
 
-If you are not familiar with VASP's compilation process, click [here](https://www.vasp.at/wiki/index.php/Installing_VASP.5.X.X).
+If you are not familiar with VASP's compilation process, click [:link: HERE](https://www.vasp.at/wiki/index.php/Installing_VASP.5.X.X).
 
-Also, you should have a preinstalled `libwannier.a`.
+Also, you need a compiled `libwannier.a`.
 If you don't know what it is, check out wannier90's user guide.
 
-To apply the patch, put the `mlwf.patch` file in the root directory of your VASP distro. and type:
+To apply the patch, put the `mlwf.patch` file in the __root__ directory (not under `src`) of your VASP distro and type:
 ```
 $ patch -p0 < mlwf.patch
 ```
@@ -63,7 +84,7 @@ A list of useful keywords:
 |   LWRITE_UNK   | Do we want the `UNK` files?                     | TRUE/FALSE            | FALSE            |
 |   LUNK_FMTED   | Do we want the `UNK` files be human-readable?   | TRUE/FALSE            | FALSE            |
 |   LREDUCE_UNK  | Do we want the `UNK` files be reduced in size?  | TRUE/FALSE            | FALSE            |
-|   LWRITE_SPN   | Do we want the `.spn` files? (Serial only)      | TRUE/FALSE            | FALSE            |
+|   LWRITE_SPN   | Do we want the `.spn` files? (__Serial only__)      | TRUE/FALSE            | FALSE            |
 |   LSPN_FMTED   | Do we want the `.spn` files be human-readable?  | TRUE/FALSE            | FALSE            |
 
 
