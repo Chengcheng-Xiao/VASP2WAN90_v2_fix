@@ -84,9 +84,11 @@ A list of useful keywords:
 |   LWRITE_UNK   | Do we want the `UNK` files?                     | TRUE/FALSE            | FALSE            |
 |   LUNK_FMTED   | Do we want the `UNK` files be human-readable?   | TRUE/FALSE            | FALSE            |
 |   LREDUCE_UNK  | Do we want the `UNK` files be reduced in size?  | TRUE/FALSE            | FALSE            |
-|   LWRITE_SPN   | Do we want the `.spn` files? (__Serial only__)      | TRUE/FALSE            | FALSE            |
+|   LWRITE_SPN   | Do we want the `.spn` files? (__Serial only__)  | TRUE/FALSE            | FALSE            |
 |   LSPN_FMTED   | Do we want the `.spn` files be human-readable?  | TRUE/FALSE            | FALSE            |
 
+## How to cite
+Citation of the code is not mandatory but would be appreciated. A reference to this website using this [BibTeX entry](./vasp2wan90.bib) will suffice.
 
 ## Contributing
 Issues and pull-requests are welcome, feel free to ask anything [E-mail](iconxicon@me.com).
