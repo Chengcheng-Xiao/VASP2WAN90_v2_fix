@@ -29,7 +29,10 @@ end kpoint_path
 ```
 Then, run postw90.x in `2-wannier_gen` to get k-resolve SHC in a band structure plot.
 
-![Band_SHC](./Band_SHC.png)
+<img src="https://raw.githubusercontent.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/dev/example/example3/pic/Band_SHC.png" width="50%" height="50%">
+
+
+<!-- ![Band_SHC](./pic/Band_SHC.png) -->
 
 
 6. Undo what we just did in set 5, then, un-comment the following in `wannier90.win` in `2-wannier_gen`:
@@ -43,7 +46,9 @@ kslice_2dkmesh = 200 200
 ```
 Then, re-run postw90.x in `2-wannier_gen` to get k-resolve SHC plotted in a fermi slice.
 
-![K_slice_SHC](./K_slice_SHC.png)
+<img src="https://raw.githubusercontent.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/dev/example/example3/pic/K_slice_SHC.png" width="50%" height="50%">
+
+<!-- ![K_slice_SHC](./pic/K_slice_SHC.png) -->
 
 
 7. Undo what we just did in set 6, then, un-comment the following in `wannier90.win` in `2-wannier_gen`:
@@ -60,7 +65,9 @@ fermi_energy_step = 0.1
 ```
 Then, re-run postw90.x in `2-wannier_gen` to get fermi sweeping plot of SHC.
 
-![Fermi_SHC](./Fermi_SHC.png)
+<img src="https://raw.githubusercontent.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/dev/example/example3/pic/Fermi_SHC.png" width="50%" height="50%">
+
+<!-- ![Fermi_SHC](./pic/Fermi_SHC.png) -->
 
 8. Undo what we just did in set 7, then, un-comment the following in `wannier90.win` in `2-wannier_gen`:
 ```
@@ -77,7 +84,10 @@ end kpoint_path
 ```
 Then, re-run postw90.x in `2-wannier_gen` to get Wannier interpolated band structure.
 
-![Wannier_band](./Wannier_band.png)
+<img src="https://raw.githubusercontent.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/dev/example/example3/pic/Wannier_band.png" width="50%" height="50%">
+
+
+<!-- ![Wannier_band](./pic/Wannier_band.png) -->
 
 ## More ideas
 - Inspect spin decomposed bandstructure, do you see the SOC-induced avoided band crossing?

@@ -9,20 +9,7 @@ __NOTE__: `ISYM=-1` is recommended for SOC calculations.
 3. Run VASP in `2-band` to get bandstructure. Inspect which bands do we want to wannierize.
 4. Copy `WAVECAR` and `CHGCAR` to `3-wannier_gen` and VASP  to get `.mmn`, `.amn`, `.spn` file.
 5. Run wannier90.x in `3-wannier_gen` to get `wannier90.chk` file.
-6. Run postw90.x in `3-wannier_gen` to get plottable bandstructure with spin expectations.
-
-7. Un-comment the following in `wannier90.win` in `3-wannier_gen`:
-```
-kslice = true
-kslice_task = fermi_lines
-kslice_fermi_lines_colour = spin
-fermi_energy = 5.4020
-kslice_2dkmesh = 200 200
-kslice_corner = 0.0  0.0  0.0
-kslice_b1 =     0.5 -0.5 -0.5
-kslice_b2 =     0.5  0.5  0.5
-```
-and comment out:
+6. Un-comment the following in `wannier90.win` in `3-wannier_gen`:
 ```
 kpath = true
 kpath_task = bands
@@ -44,7 +31,28 @@ G 0.0 0.0 0.0            P 0.75 0.25 -0.25
 P 0.75 0.25 -0.25        N 0.5 0.0 0.0
 end kpoint_path
 ```
+Then, run postw90.x in `3-wannier_gen` to get bandstructure plot with spin expectations.
+
+<img src="https://raw.githubusercontent.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/dev/example/example2/pic/Band_spin_exp.png" width="50%" height="50%">
+
+<!-- ![Band_spin_exp](./pic/Band_spin_exp.png) -->
+
+7. Undo what we just did in set 6, then, un-comment the following in `wannier90.win` in `2-wannier_gen`:
+```
+kslice = true
+kslice_task = fermi_lines
+kslice_fermi_lines_colour = spin
+fermi_energy = 5.4020
+kslice_2dkmesh = 200 200
+kslice_corner = 0.0  0.0  0.0
+kslice_b1 =     0.5 -0.5 -0.5
+kslice_b2 =     0.5  0.5  0.5
+```
 Then, re-run postw90.x in `3-wannier_gen` to get fermi slice plot with spin expectations.
+
+<img src="https://raw.githubusercontent.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/dev/example/example2/pic/Fermi_slice_spin_exp.png" width="50%" height="50%">
+
+<!-- ![Fermi_slice_spin_exp](./pic/Fermi_slice_spin_exp.png) -->
 
 ## More ideas
 - Inspect spin decomposed bandstructure, do you see the SOC-induced avoided band crossing?
