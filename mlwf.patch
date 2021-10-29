@@ -1443,7 +1443,7 @@ diff -bruN src/wave_high.F ../vasp.5.4.4_mod/src/wave_high.F
 +                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(-1._q,0._q,q),CQIJ(1,1,NI,1+0+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
 +                 ELSEIF (ISPINOR==1 .AND. ISPINOR_==1 ) THEN
 +                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(1._q,0._q,q),CQIJ(1,1,NI,1+1+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLx)
-+                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,1._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
++                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(0._q,1._q,q),CQIJ(1,1,NI,1+1+2*0),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLy)
 +                    CALL ECCP_NL_SPN(LMDIM,LMMAXC,CMPLX(-1._q,0._q,q),CQIJ(1,1,NI,1+1+2*1),W2%CPROJ(NPRO_+1),W1%CPROJ(NPRO+1),CNLz)
 +                 ENDIF
 +                 NPRO = LMMAXC+NPRO
