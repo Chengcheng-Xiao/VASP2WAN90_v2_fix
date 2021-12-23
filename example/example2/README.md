@@ -4,7 +4,7 @@ See Wannier90's `example17` for more details.
 
 ## Run
 __NOTE__: `ISYM=-1` is recommended for SOC calculations.
-1. Generate PBE `POTCAR` file.
+1. Generate PBE `POTCAR` file. [PAW_PBE Fe]
 2. Run VASP in `1-scf` to get `WAVECAR` and `CHGCAR` files.
 3. Run VASP in `2-band` to get bandstructure. Inspect which bands do we want to wannierize.
 4. Copy `WAVECAR` and `CHGCAR` to `3-wannier_gen` and VASP  to get `.mmn`, `.amn`, `.spn` file.

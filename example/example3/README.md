@@ -4,7 +4,7 @@ See Wannier90's `example29` for more details.
 
 ## Run
 __NOTE__: `ISYM=-1` is recommended for SOC calculations.
-1. Generate PBE `POTCAR` file.
+1. Generate PBE `POTCAR` file. [PAW_PBE Pt]
 2. Run VASP in `1-scf` to get `WAVECAR` and `CHGCAR` files.
 3. Copy `WAVECAR` and `CHGCAR` to `2-wannier_gen` and VASP  to get `.mmn`, `.amn`, `.spn` file.
 4. Run wannier90.x in `2-wannier_gen` to get `wannier90.chk` file.
