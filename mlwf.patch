@@ -575,7 +575,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +
 +         DEALLOCATE(FTMP,FR,FGTMP,FG)
 +
-+         IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') '*          Projection ',NPROJ,' done.         *'
++         IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A,I3,A)') '*       Projection [',NPROJ,'/',num_wann,'] done.      *
 +      !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
 +      !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
 +        ENDDO spinor1
@@ -676,7 +676,7 @@ diff -bruN src/mlwf.F ../vasp.5.4.4_mod/src/mlwf.F
 +         !        CALL STOP_TIMING("T2",IO%IU6,'  OVL')
 +         !        CALL STOP_TIMING("T1",IO%IU6,'ICNTR')
 +      !ENDDO spinor
-+          IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A)') '* Projection ',NPROJ,' done. [q_axis changed] *'
++          IF (IO%IU0>=0) WRITE(IO%IU0,'(X,A,I3,A,I3,A)') '* Projection [',NPROJ,'/',num_wann,'] done. [axis mod] *'
 +        ENDIF ! quantization IF
        ENDDO sites
 -      ENDDO spinor
