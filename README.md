@@ -11,7 +11,7 @@
 
 <a href="https://github.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/wiki" alt="Wiki">
 <img src="https://img.shields.io/badge/-wiki-brightgreen?style=flat-square" /></a>
- 
+
 <a href="https://raw.githubusercontent.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/dev/vasp2wan90.bib" alt="Cite">
 <img src="https://img.shields.io/badge/-cite-ff69b4?style=flat-square" /></a>
 
@@ -48,7 +48,7 @@ This project provides a patch for the [VASP](https://www.vasp.at/) code, fixing 
 
 ## Installation
 
-__THIS FIX ONLY WORKS WITH VASP v5.4.4__
+__THIS FIX ONLY WORKS WITH VASP v5.4.4.pl2__
 
 For this patch to work, you have to recompile VASP.
 
