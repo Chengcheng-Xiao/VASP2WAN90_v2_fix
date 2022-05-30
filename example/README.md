@@ -4,3 +4,4 @@
 - example2: Iron – Spin-orbit-coupled bands and Fermi-surface contours
 - example3: Platinum – Spin Hall conductivity
 - example4: Iron - Berry curvature, anomalous Hall conductivity and optical conductivity
+- example5: Iron – Orbital magnetization
