@@ -14,6 +14,7 @@ __NOTE__: `ISYM=-1` is recommended for SOC calculations.
 ```
 python -m wannierberri.utils.mmn2uHu wannier90  targets=uHu
 ```
+Alternatively, checkout the [uhu_uiu branch](https://github.com/Chengcheng-Xiao/VASP2WAN90_v2_fix/tree/uhu_uiu).
 
 6. Un-comment the following in `wannier90.win` in `2-wannier_gen`:
 ```
