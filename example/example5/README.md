@@ -8,13 +8,11 @@ __NOTE__: `ISYM=-1` is recommended for SOC calculations.
 1. Generate PBE `POTCAR` file. [PAW_PBE Fe]
 2. Run VASP in `1-scf` to get `WAVECAR` and `CHGCAR` files.
 3. Copy `WAVECAR` and `CHGCAR` to `2-wannier_gen` and run VASP to get `.mmn`, `.amn` file.
-4. Run wannier90.x in `2-wannier_gen`.
-
-5. To generate `wannier90.uHu` file, install [Wannier-Berri](https://github.com/wannier-berri/wannier-berri)
+4. To generate `.uHu` file, add the following to your `INCAR` and re-run VASP:
 ```
-python -m wannierberri.utils.mmn2uHu wannier90  targets=uHu
+LWRITE_UHU = .TRUE.
 ```
-
+5. Run wannier90.x in `2-wannier_gen`.
 6. Un-comment the following in `wannier90.win` in `2-wannier_gen`:
 ```
 fermi_energy = 5.4021
