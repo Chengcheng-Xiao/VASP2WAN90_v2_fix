@@ -1,12 +1,8 @@
-diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
+diff --color -bruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 --- src/mlwf.F	2019-11-04 13:45:34.000000000 +0000
-+++ ../vasp.5.4.4.pl2.mod/src/mlwf.F	2022-05-31 14:02:45.947007332 +0100
-@@ -3,15 +3,33 @@
-       MODULE mlwf
-       USE prec
-       USE pead
-- 
-+
++++ ../vasp.5.4.4.pl2.mod/src/mlwf.F	2022-05-31 16:06:43.825737568 +0100
+@@ -6,12 +6,35 @@
+  
        ! write the wave functions to UNK files
        LOGICAL, PRIVATE, SAVE :: WRITE_UNK
 +      LOGICAL, PRIVATE, SAVE :: UNK_FMTED
@@ -16,9 +12,14 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +      LOGICAL, PRIVATE, SAVE :: WRITE_SPN
 +      LOGICAL, PRIVATE, SAVE :: SPN_FMTED
 +
-+      ! write the wave functions to UNK files
++      ! write the wave functions to UHU files
 +      LOGICAL, PRIVATE, SAVE :: WRITE_UHU
 +      LOGICAL, PRIVATE, SAVE :: UHU_FMTED
++
++      ! write the wave functions to UIU files
++      LOGICAL, PRIVATE, SAVE :: WRITE_UIU
++      LOGICAL, PRIVATE, SAVE :: UIU_FMTED
++
 +
        ! write the mmn and amn files when WANNIER90 runs in lib mode
 -      LOGICAL, PRIVATE, SAVE :: WRITE_MMN_AMN
@@ -37,50 +38,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        ! wannier90_run variables: output
        COMPLEX(q), ALLOCATABLE, SAVE :: U_matrix(:,:,:,:)
        COMPLEX(q), ALLOCATABLE, SAVE :: U_matrix_opt(:,:,:,:)
-@@ -34,7 +52,7 @@
-       ! setup and run wannier90 in library mode
-       LOGICAL, SAVE :: LWANNIER90_RUN=.FALSE.
- 
--      !filename of Wannier projection matrices 
-+      !filename of Wannier projection matrices
-       CHARACTER(LEN=7),PUBLIC,PARAMETER :: WANPROJFILE='WANPROJ'
-       ! write U_nm(k) matrix
-       LOGICAL, PUBLIC, SAVE :: LWRITE_WANPROJ
-@@ -80,7 +98,7 @@
-           real(kind=dp), dimension(num_bands_tot_), intent(out) :: proj_zona_
-           integer, dimension(num_bands_tot_), intent(out) :: exclude_bands_
- #ifdef VASP2WANNIER90v2
--          integer, dimension(num_bands_tot_), optional, intent(out) :: proj_s_  
-+          integer, dimension(num_bands_tot_), optional, intent(out) :: proj_s_
-           real(kind=dp), dimension(3,num_bands_tot_), optional, intent(out) :: proj_s_qaxis_
- #endif
-         end subroutine wannier_setup
-@@ -121,7 +139,7 @@
-       CONTAINS
- 
- !******************** SUBROUTINE MLWF_READER ***************************
--!      
-+!
- !***********************************************************************
-       SUBROUTINE MLWF_READER(IU5,IU6,IU0,LDOWNSAMPLE)
-       USE base
-@@ -173,18 +191,32 @@
-       IF ( LWRITE_WANPROJ .AND. .NOT.LWANNIER90_RUN) THEN
-          IF(IU0>=0)WRITE(IU0,*)'LWANNIER90_RUN forced by LWRITE_WANPROJ'
-          LWANNIER90_RUN=.TRUE.
--      ENDIF 
--  
-+      ENDIF
-+
-       !WANPROJ needs downsampling
-       IF ( LWRITE_WANPROJ .AND. .NOT.LDOWNSAMPLE) THEN
-          IF(IU0>=0)WRITE(IU0,*)'LDOWNSAMPLE forced by LWRITE_WANPROJ'
-          LDOWNSAMPLE=.TRUE.
--      ENDIF 
--      
-+      ENDIF
-+
-       IF (WANNIER90()) THEN
+@@ -185,6 +208,20 @@
           ! Switch on the PEAD routines
           CALL PEAD_REQUEST
  
@@ -101,7 +59,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
           ! Do we want to write UNK files?
           WRITE_UNK=.FALSE.
           CALL RDATAB(.FALSE.,INCAR,IU5,'LWRITE_UNK','=','#',';','L', &
-@@ -195,17 +227,140 @@
+@@ -195,17 +232,162 @@
                 WRITE(IU0,*)'Error reading item ''LWRITE_UNK'' from file INCAR.'
              WRITE_UNK=.FALSE.
           ENDIF
@@ -172,6 +130,28 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +            UHU_FMTED=.FALSE.
 +         ENDIF
 +
++         ! 2020-06-25 CCX: Do we want to write the uIu file?
++         WRITE_uIu=.FALSE.
++         CALL RDATAB(.FALSE.,INCAR,IU5,'LWRITE_UIU','=','#',';','L', &
++        &            IDUM,RDUM,CDUM,WRITE_UIU,CHARAC,N,1,IERR)
++         IF (((IERR/=0).AND.(IERR/=3)).OR. &
++        &                    ((IERR==0).AND.(N<1))) THEN
++            IF (IU0>=0) &
++               WRITE(IU0,*)'Error reading item ''LWRITE_UIU'' from file INCAR.'
++            WRITE_SPN=.FALSE.
++         ENDIF
++
++         ! 2020-06-25 CCX: Do we want to write the uIu file formated?
++         uIu_FMTED=.FALSE.
++         CALL RDATAB(.FALSE.,INCAR,IU5,'LUIU_FMTED','=','#',';','L', &
++        &            IDUM,RDUM,CDUM,UIU_FMTED,CHARAC,N,1,IERR)
++         IF (((IERR/=0).AND.(IERR/=3)).OR. &
++        &                    ((IERR==0).AND.(N<1))) THEN
++            IF (IU0>=0) &
++               WRITE(IU0,*)'Error reading item ''LUIU_FMTED'' from file INCAR.'
++            UIU_FMTED=.FALSE.
++         ENDIF
++
 +
           ! Do we want to write the mmn and amn files
           ! even though WANNIER90 runs in library mode?
@@ -182,15 +162,13 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +         CALC_MMN=.TRUE.
 +         CALL RDATAB(.FALSE.,INCAR,IU5,'LCALC_MMN','=','#',';','L', &
 +        &            IDUM,RDUM,CDUM,CALC_MMN,CHARAC,N,1,IERR)
-          IF (((IERR/=0).AND.(IERR/=3)).OR. &
-         &                    ((IERR==0).AND.(N<1))) THEN
-             IF (IU0>=0) &
--               WRITE(IU0,*)'Error reading item ''LWRITE_MMN_AMN'' from file INCAR.'
--            WRITE_MMN_AMN=.NOT.LWANNIER90_RUN
++         IF (((IERR/=0).AND.(IERR/=3)).OR. &
++        &                    ((IERR==0).AND.(N<1))) THEN
++            IF (IU0>=0) &
 +               WRITE(IU0,*)'Error reading item ''LCALC_MMN'' from file INCAR.'
 +            ! this is counterintuitive, we want to calculate MMN by default
 +            CALC_MMN=.TRUE.
-          ENDIF
++         ENDIF
 +         ! if wannier90_run, we need mmn calculation
 +         IF ((LWANNIER90_RUN) .AND. (.NOT.CALC_MMN)) CALC_MMN=.TRUE.
 +
@@ -237,35 +215,19 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +         WRITE_EIG=.NOT.LWANNIER90_RUN
 +         CALL RDATAB(.FALSE.,INCAR,IU5,'LWRITE_EIG','=','#',';','L', &
 +        &            IDUM,RDUM,CDUM,WRITE_EIG,CHARAC,N,1,IERR)
-+         IF (((IERR/=0).AND.(IERR/=3)).OR. &
-+        &                    ((IERR==0).AND.(N<1))) THEN
-+            IF (IU0>=0) &
+          IF (((IERR/=0).AND.(IERR/=3)).OR. &
+         &                    ((IERR==0).AND.(N<1))) THEN
+             IF (IU0>=0) &
+-               WRITE(IU0,*)'Error reading item ''LWRITE_MMN_AMN'' from file INCAR.'
+-            WRITE_MMN_AMN=.NOT.LWANNIER90_RUN
 +               WRITE(IU0,*)'Error reading item ''LWRITE_EIG'' from file INCAR.'
 +            WRITE_EIG=.NOT.LWANNIER90_RUN
-+         ENDIF
+          ENDIF
 +
           ! Do we want to read the amn file instead of
           ! computing it anew?
           READ_AMN=.FALSE.
-@@ -254,7 +409,7 @@
-       IMPLICIT NONE
-       LOGICAL WANNIER90RUN
-       WANNIER90RUN=LWANNIER90_RUN
--      END FUNCTION WANNIER90RUN 
-+      END FUNCTION WANNIER90RUN
- 
-       SUBROUTINE WANNIER90_RUN_REQUEST
-       IMPLICIT NONE
-@@ -263,7 +418,7 @@
-       END SUBROUTINE WANNIER90_RUN_REQUEST
- 
- !******************** SUBROUTINE MLWF_WANNIER90 ************************
--!      
-+!
- !***********************************************************************
-       SUBROUTINE MLWF_WANNIER90(&
-      & WDES,W,P,CQIJ,T_INFO,LATT_CUR,INFO,IO &
-@@ -320,6 +475,9 @@
+@@ -320,6 +502,9 @@
        REAL(q), ALLOCATABLE :: proj_x(:,:)
        REAL(q), ALLOCATABLE :: proj_zona(:)
        INTEGER, ALLOCATABLE :: exclude_bands(:)
@@ -275,7 +237,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        ! wannier90_run variables: input
        COMPLEX(q), ALLOCATABLE :: M_matrix(:,:,:,:,:)
        COMPLEX(q), ALLOCATABLE :: A_matrix(:,:,:,:)
-@@ -329,6 +487,22 @@
+@@ -329,6 +514,30 @@
        INTEGER NI,MI,NK,NKP,ICNTR
        INTEGER NKI,NKJ,ISP,ISPINOR,L,M,N,NP
        INTEGER NEXCLB,NPROJ
@@ -288,6 +250,14 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +      CHARACTER (len=60)       :: uHu_header
 +      ! CCX_2022-05-30: end definition
 +
++      ! CCX_2022-05-31: add local variables for uIu and uIu
++      ! INTEGER NB1, NB2
++      ! INTEGER LLI, LL
++      ! REAL(q) KB1(3), KB2(3)
++      COMPLEX(q), ALLOCATABLE :: uIu_matrix(:,:,:,:,:,:)
++      CHARACTER (len=60)       :: uIu_header
++      ! CCX_2022-05-31: end definition
++
 +
 +      ! CCX_2019-05-06: spin quantization local variables
 +      LOGICAL spin_z_pos,spin_z_neg
@@ -298,7 +268,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        REAL(q) POS(3)
        REAL(q) KI(3),KJ(3)
        INTEGER IDUM,IERR
-@@ -347,9 +521,16 @@
+@@ -347,6 +556,13 @@
        REAL(q), ALLOCATABLE :: ROTYLM(:,:)
        REAL(q), ALLOCATABLE :: HYBRID_ORBITAL(:)
  
@@ -311,12 +281,8 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +
        LOGICAL, ALLOCATABLE :: EXCLUDE_BAND(:)
        LOGICAL LUSE_BLOCH_PHASES
--      
-+
-       INTEGER, PARAMETER :: LMAX=3
-       CHARACTER(LEN=11):: UNKFILE
-       CHARACTER(LEN=2) :: SP(2)=(/"up","dn"/)
-@@ -357,20 +538,48 @@
+       
+@@ -357,20 +573,59 @@
        INTEGER num_bands_on_file,num_kpts_on_file,NPROJ_on_file
  
        IF (.NOT.WANNIER90()) RETURN
@@ -333,8 +299,19 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +         ! WRITE_MMN = .TRUE.
 +         WRITE_EIG = .TRUE.
 +      ENDIF
++
++      ! CCX-2022-05-31: as of now, we need to calculate MMN to calculate UIU.
++      ! manually setting them here.
++      ! TODO: add read mmn routine, check if MMN exist. If do, skip MMN calculation.
++      IF (WRITE_UIU .AND. .NOT. CALC_MMN) THEN
++         IF (IO%IU0>=0) WRITE(IO%IU0,*) '*  WRITE_UIU sets CALC_MMN & WRITE_EIG  *'
++         CALC_MMN = .TRUE.
++         ! WRITE_MMN = .TRUE.
++         ! WRITE_EIG = .TRUE.
++      ENDIF
  
 -#ifdef MPI
++
 +      ! 2020-06-28 CCX: I moved this to here so we can have control over collinear spin channels.
 +      ! loop over spin
 +      spin: DO ISP=1,WDES%ISPIN
@@ -373,15 +350,14 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  ! allocation
        ALLOCATE(S(WDES%NB_TOT,WDES%NB_TOT))
  
-@@ -422,8 +631,25 @@
+@@ -422,8 +677,25 @@
        ! A minimal wannier90.win file must exist; it must at least
        ! contain the keyword "num_wann"
        IF (IO%IU6>=0) THEN
--         INQUIRE(FILE=seed_name//'.win',EXIST=LWIN_FOUND)         
 +         IF ((.not. spinors) .AND. (WDES%ISPIN==2)) THEN
 +            INQUIRE(FILE=seed_name//'.'//SP(ISP)//'.win',EXIST=LWIN_FOUND)
 +         ELSE
-+            INQUIRE(FILE=seed_name//'.win',EXIST=LWIN_FOUND)
+          INQUIRE(FILE=seed_name//'.win',EXIST=LWIN_FOUND)         
 +         ENDIF
 +
           IF (LWIN_FOUND) THEN
@@ -400,7 +376,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
              OPEN(UNIT=99,FILE=seed_name//'.win',STATUS='OLD')
              CALL RDATAB(.FALSE.,seed_name//'.win',99,'num_wann','=','#',';','I', &
             &            IDUM,RDUM,CDUM,LDUM,CHARAC,N,1,IERR)
-@@ -434,11 +660,17 @@
+@@ -434,10 +706,16 @@
                 STOP
              ENDIF
              IF (IERR==3) WRITE(99,'(A,I6,2X,A)') ' num_wann =',WDES%NB_TOT,'! set to NBANDS by VASP'
@@ -413,13 +389,11 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
              OPEN(UNIT=99,FILE=seed_name//'.win',STATUS='REPLACE')
              WRITE(99,'(A,I6,2X,A)') ' num_wann =',WDES%NB_TOT,'! set to NBANDS by VASP'
           ENDIF
--         CLOSE(99) 
 +         ENDIF
-+         CLOSE(99)
+          CLOSE(99) 
        ENDIF
  
-       ! Initialize everything to zero
-@@ -449,21 +681,50 @@
+@@ -449,18 +727,47 @@
  
        ALLOCATE(proj_site(3,num_bands_tot),proj_l(num_bands_tot),proj_m(num_bands_tot), &
       &   proj_radial(num_bands_tot),proj_z(3,num_bands_tot),proj_x(3,num_bands_tot), &
@@ -469,12 +443,8 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +      ENDIF
  #endif
        ! Now communicate the output to the other nodes
--      CALLMPI( M_sum_i(WDES%COMM,nntot,1) ) 
-+      CALLMPI( M_sum_i(WDES%COMM,nntot,1) )
-       CALLMPI( M_sum_i(WDES%COMM,nnlist,num_kpts*num_nnmax) )
-       CALLMPI( M_sum_i(WDES%COMM,nncell,3*num_kpts*num_nnmax) )
-       CALLMPI( M_sum_i(WDES%COMM,num_bands,1) )
-@@ -476,6 +737,11 @@
+       CALLMPI( M_sum_i(WDES%COMM,nntot,1) ) 
+@@ -476,6 +783,11 @@
        CALLMPI( M_sum_d(WDES%COMM,proj_x,3*num_bands_tot) )
        CALLMPI( M_sum_d(WDES%COMM,proj_zona,num_bands_tot) )
        CALLMPI( M_sum_i(WDES%COMM,exclude_bands,num_bands_tot) )
@@ -486,16 +456,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
        ALLOCATE(EXCLUDE_BAND(num_bands_tot))
        EXCLUDE_BAND=.FALSE. ; NEXCLB=0
-@@ -520,7 +786,7 @@
-       ! Here the work starts in earnest
-       ! We need to calculate M(m,n,j,i) = < u_m,k_i | u_n,k_j >
-       ! where k_i = kpt_latt(:,i), and k_j = kpt_latt(:,nnlist(i,j))+nncell(:,i,j)
--      ! U(m,n,j,i) is then written to the file seed_name.mmn 
-+      ! U(m,n,j,i) is then written to the file seed_name.mmn
- 
-       ALLOCATE(M_matrix(num_bands,num_bands,nntot,num_kpts,WDES%ISPIN))
-       ALLOCATE(A_matrix(num_bands,num_wann,num_kpts,WDES%ISPIN))
-@@ -530,18 +796,18 @@
+@@ -530,10 +842,7 @@
        ! nullify pointers by default
        R%R=>NULL(); R%SI=>NULL()
  
@@ -507,9 +468,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
           IF (WDES%ISPIN==1) THEN
              OPEN(UNIT=99,FILE=seed_name//'.mmn',STATUS='REPLACE')
           ELSE
--            OPEN(UNIT=99,FILE=seed_name//'.'//SP(ISP)//'.mmn',STATUS='REPLACE')            
-+            OPEN(UNIT=99,FILE=seed_name//'.'//SP(ISP)//'.mmn',STATUS='REPLACE')
-          ENDIF
+@@ -542,6 +851,9 @@
           WRITE(99,'(A)') 'File generated by VASP: '//INFO%SZNAM1
           WRITE(99,'(3I12)') num_bands,num_kpts,nntot
        ENDIF
@@ -519,7 +478,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        ! runs over all k-points
        ki_loop: DO NKI=1,num_kpts
           KI(:)=kpt_latt(:,NKI)
-@@ -553,7 +819,7 @@
+@@ -553,7 +865,7 @@
  #endif
              CALL PEAD_CALC_OVERLAP(W,KI,KJ,ISP,P,CQIJ,LATT_CUR,T_INFO,S,LQIJB=.TRUE.)
  
@@ -528,7 +487,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
              NI=0
              n_loop: DO N=1,WDES%NB_TOT
-@@ -563,7 +829,7 @@
+@@ -563,7 +875,7 @@
                    IF (EXCLUDE_BAND(M)) CYCLE m_loop
                    MI=MI+1
                    M_matrix(MI,NI,NKJ,NKI,ISP)=S(M,N)
@@ -537,7 +496,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
                 ENDDO m_loop
              ENDDO n_loop
              ! check consistency
-@@ -575,18 +841,102 @@
+@@ -575,7 +887,84 @@
           ENDDO kj_loop
        ENDDO ki_loop
  
@@ -623,9 +582,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
        ! and we might want to read an existing amn file
        IF (READ_AMN) THEN
--      ! compute NPROJ 
-+      ! compute NPROJ
-       NPROJ=0
+@@ -584,9 +973,16 @@
        DO ISPINOR=1,WDES%NRSPINORS
        DO ICNTR=1,num_bands_tot
           IF (proj_l(ICNTR)==0.AND.proj_m(ICNTR)==0.AND.proj_radial(ICNTR)==0) CYCLE
@@ -642,7 +599,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        ! check if amn file exists
        IF (WDES%ISPIN==1) THEN
           INQUIRE(FILE=seed_name//'.amn',EXIST=LAMN_FOUND)
-@@ -627,7 +977,8 @@
+@@ -627,7 +1023,8 @@
        ENDIF
        ENDIF ! finished reading A_matrix
  
@@ -652,13 +609,11 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        ! we need to calculate the projection of the wave functions
        ! onto a set of trial functions {g}: A(m,n,i) = < \psi_m,k_i | g_n >
        ! A(m,n,i) is then written to the file seed_name.amn
-@@ -642,12 +993,37 @@
-       ALLOCATE(A(WDES%NB_TOT,(LMAX+1)**2),AP(WDES%NB_TOT,(LMAX+1)**2))
+@@ -643,11 +1040,36 @@
        ALLOCATE(ROTYLM((LMAX+1)**2,(LMAX+1)**2),HYBRID_ORBITAL((LMAX+1)**2))
  
--      NPROJ=0 
+       NPROJ=0 
 -!     CALL START_TIMING("T1")
-+      NPROJ=0
 +      ! CCX_2020-06-15: initialize A matrix
 +      A_matrix=0
        ! runs over all projector sites
@@ -693,16 +648,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
           NPROJ=NPROJ+1
           ! setup the Ylm rotation matrix in accordance with proj_z and proj_x
           CALL SETROTYLM(proj_x(:,ICNTR),proj_z(:,ICNTR),LMAX,ROTYLM)
-@@ -659,7 +1035,7 @@
-             ENDDO
-          ENDIF
- #endif
--         ! translate between VASP and the orbital definition of wannier90  
-+         ! translate between VASP and the orbital definition of wannier90
-          CALL WANNIER90_ORBITAL_DEFINITIONS(proj_l(ICNTR),proj_m(ICNTR),HYBRID_ORBITAL)
-          ! setup the radial functions (real space)
-          CALL SETRGRID(RSTART/proj_zona(ICNTR),REND,H,R)
-@@ -673,9 +1049,9 @@
+@@ -673,9 +1095,9 @@
           ENDDO
  
  
@@ -714,16 +660,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
              CALL CALC_OVERLAP_GN( &
             &   LMAX,FG,proj_site(:,ICNTR),W,kpt_latt(:,NKI),ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,A)
              ! and rotate them in accordance with proj_z and proj_x
-@@ -685,7 +1061,7 @@
-                DO NP=1,(LMAX+1)**2
-                   AP(M,N)=AP(M,N)+A(M,NP)*ROTYLM(N,NP)
-                ENDDO
--            ENDDO   
-+            ENDDO
-             ENDDO
- #ifdef debug
-             IF (IO%IU6>=0) THEN
-@@ -712,15 +1088,111 @@
+@@ -712,15 +1134,111 @@
                 A_matrix(MI,NPROJ,NKI,ISP)=CPROJ
              ENDDO
  
@@ -839,7 +776,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
        DEALLOCATE(A,AP,ROTYLM,HYBRID_ORBITAL)
  
-@@ -733,20 +1205,21 @@
+@@ -733,13 +1251,14 @@
           IF (IO%IU0>=0) WRITE(*,*) 'MLWF_WANNIER90: ERROR: number of projections not equal to num_wann',NPROJ,num_wann
           STOP
        ENDIF
@@ -856,33 +793,22 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
              IF (WDES%ISPIN==1) THEN
                 OPEN(UNIT=99,FILE=seed_name//'.amn',STATUS='REPLACE')
              ELSE
--               OPEN(UNIT=99,FILE=seed_name//'.'//SP(ISP)//'.amn',STATUS='REPLACE')            
-+               OPEN(UNIT=99,FILE=seed_name//'.'//SP(ISP)//'.amn',STATUS='REPLACE')
-             ENDIF
-             WRITE(99,'(A)') 'File generated by VASP: '//INFO%SZNAM1
--            WRITE(99,'(3I12)') num_bands,num_kpts,NPROJ     
-+            WRITE(99,'(3I12)') num_bands,num_kpts,NPROJ
-             DO NKI=1,num_kpts
-             DO N=1,NPROJ
-             DO M=1,num_bands
-@@ -757,8 +1230,14 @@
+@@ -757,8 +1276,14 @@
              CLOSE(99)
           ENDIF
        ELSE
--         ! read use_bloch_phases from the .win file
--         OPEN(UNIT=99,FILE=seed_name//'.win',STATUS='OLD')
 +	 ! 2022-04-04 CCX: added for spin polarized calculations
 +         IF ((.not. spinors) .AND. (WDES%ISPIN==2)) THEN
-+           ! read use_bloch_phases from the .win file
+          ! read use_bloch_phases from the .win file
 +	   OPEN(UNIT=99,FILE=seed_name//'.'//SP(ISP)//'.win',STATUS='OLD')
 +	 ELSE
-+           OPEN(UNIT=99,FILE=seed_name//'.win',STATUS='OLD')
+          OPEN(UNIT=99,FILE=seed_name//'.win',STATUS='OLD')
 +	 ENDIF
 +
           CALL RDATAB(.FALSE.,seed_name//'.win',99,'use_bloch_phases','=','#',';','L', &
          &            IDUM,RDUM,CDUM,LUSE_BLOCH_PHASES,CHARAC,N,1,IERR)
           IF (((IERR/=0).AND.(IERR/=3)).OR. &
-@@ -773,6 +1252,7 @@
+@@ -773,6 +1298,7 @@
              LUSE_BLOCH_PHASES=.TRUE.
           ENDIF
           CLOSE(99)
@@ -890,7 +816,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        ENDIF
        ! if we do not have starting projections and
        ! use_bloch_phases=.false. in the .win file
-@@ -781,17 +1261,22 @@
+@@ -781,10 +1307,13 @@
        IF (NPROJ==0.AND.(.NOT.LUSE_BLOCH_PHASES).AND.WANNIER90RUN()) THEN
  !
        ENDIF
@@ -905,8 +831,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
           IF (WDES%ISPIN==1) THEN
              OPEN(UNIT=99,FILE=seed_name//'.eig',STATUS='REPLACE')
           ELSE
--            OPEN(UNIT=99,FILE=seed_name//'.'//SP(ISP)//'.eig',STATUS='REPLACE')            
-+            OPEN(UNIT=99,FILE=seed_name//'.'//SP(ISP)//'.eig',STATUS='REPLACE')
+@@ -792,6 +1321,8 @@
           ENDIF
        ENDIF
  
@@ -915,15 +840,14 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        DO NKI=1,num_kpts
           NK=KPOINT_IN_FULL_GRID(kpt_latt(:,NKI),KPOINTS_FULL)
           NK=KPOINTS_FULL%NEQUIV(NK)
-@@ -800,10 +1285,89 @@
+@@ -800,10 +1331,133 @@
              IF (EXCLUDE_BAND(M)) CYCLE
              MI=MI+1
              eigenvalues(MI,NKI,ISP)=REAL(W%CELTOT(M,NK,ISP))
 -            IF (IO%IU6>0.AND.WRITE_MMN_AMN) WRITE(99,'(2I12,F22.12)') MI,NKI,REAL(W%CELTOT(M,NK,ISP))
 +            IF (IO%IU6>0.AND.WRITE_EIG) WRITE(99,'(2I12,F22.12)') MI,NKI,REAL(W%CELTOT(M,NK,ISP))
-          ENDDO
-       ENDDO
--      IF (IO%IU6>=0.AND.WRITE_MMN_AMN) CLOSE(99)
++         ENDDO
++      ENDDO
 +
 +
 +      IF (IO%IU6>=0.AND.WRITE_EIG) CLOSE(99)
@@ -950,8 +874,26 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +      ALLOCATE(uHu_matrix(num_bands,num_bands,num_kpts,nntot,nntot,WDES%ISPIN))
 +      UHU_matrix = 0
 +
++      ! 2022-05-31 CCX: do we want to calculate uIu matrix
++      IF (IO%IU6>=0.AND.WRITE_UIU) THEN
++        IF (UIU_FMTED) THEN
++          OPEN(UNIT=991,FILE=seed_name//'.uIu',FORM="FORMATTED",STATUS='REPLACE')
++          UIU_header = 'File generated by VASP: '//INFO%SZNAM1
++          WRITE(991,'(A)') UIU_header
++          WRITE(991,'(3I12)') num_bands,num_kpts,nntot
++        ELSE
++          OPEN(UNIT=991,FILE=seed_name//'.uIu',FORM="UNFORMATTED",STATUS='REPLACE')
++          UIU_header = 'File generated by VASP: '//INFO%SZNAM1
++          WRITE(991) UIU_header
++          WRITE(991) num_bands,num_kpts,nntot
++        ENDIF
++      ENDIF
 +
-+      IF (WRITE_UHU) THEN
++      ALLOCATE(UIU_matrix(num_bands,num_bands,num_kpts,nntot,nntot,WDES%ISPIN))
++      UIU_matrix = 0
++
++
++      IF (WRITE_UHU .OR. WRITE_UIU) THEN
 +      ! runs over all k-points
 +      uhu_ki_loop: DO NKI=1,num_kpts
 +        ! runs over the number of nearest-neighbours of k_b1
@@ -969,7 +911,8 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +                  !     = (M_{lm}^{b1}(k))^* E_l(k) M_{ln}^{b2}(k)
 +                  ! The order here seems to be messed up (NI and MI). This is the order that I find to be sort of working.
 +                  ! TODO: double check this
-+                  UHU_matrix(NI,MI,NKI,NB1,NB2,ISP)=UHU_matrix(NI,MI,NKI,NB1,NB2,ISP)+CONJG(M_matrix(LL,NI,NB1,NKI,ISP))*REAL(eigenvalues(LL,NKI,ISP))*M_matrix(LL,MI,NB2,NKI,ISP)
++                  IF (WRITE_UHU) UHU_matrix(NI,MI,NKI,NB1,NB2,ISP)=UHU_matrix(NI,MI,NKI,NB1,NB2,ISP)+CONJG(M_matrix(LL,NI,NB1,NKI,ISP))*eigenvalues(LL,NKI,ISP)*M_matrix(LL,MI,NB2,NKI,ISP)
++                  IF (WRITE_UIU) UIU_matrix(NI,MI,NKI,NB1,NB2,ISP)=UIU_matrix(NI,MI,NKI,NB1,NB2,ISP)+CONJG(M_matrix(LL,NI,NB1,NKI,ISP))*M_matrix(LL,MI,NB2,NKI,ISP)
 +                ENDDO uhu_l_loop
 +              ENDDO uhu_n_loop
 +            ENDDO uhu_m_loop
@@ -996,18 +939,44 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +          ENDDO
 +        ENDDO
 +
-+
-+      ENDIF
++      IF (ALLOCATED(uHu_matrix)) DEALLOCATE(uHu_matrix)
 +      IF (IO%IU6>=0.AND.WRITE_UHU) CLOSE(99)
 +      IF (IO%IU0>=0.AND.WRITE_UHU) WRITE(IO%IU0,*) "*            UHU written.               *"
-+      DEALLOCATE(uHu_matrix)
 +      ! 2022-05-31 CCX: end uHu output
 +
++
++      ! write UIU to file
++      ! note that we need to have loops over b-vectors
++      ! because this is how it's read in postw90.x...
++        DO NKI=1,num_kpts
++          DO NB2=1,nntot
++            DO NB1=1,nntot
++              IF (UIU_FMTED) THEN
++              DO MI=1,num_bands
++                DO NI=1,num_bands
++                    IF (IO%IU6>=0.AND.WRITE_UIU) WRITE(991,'(2ES20.10)') (UIU_matrix(MI,NI,NKI,NB1,NB2,ISP))
++                ENDDO
+          ENDDO
++              ELSE
++                IF (IO%IU6>=0.AND.WRITE_UIU) WRITE(991) ((UIU_matrix(MI,NI,NKI,NB1,NB2,ISP), NI=1,num_bands),MI=1,num_bands)
++              ENDIF
+       ENDDO
+-      IF (IO%IU6>=0.AND.WRITE_MMN_AMN) CLOSE(99)
++          ENDDO
++        ENDDO
++
++
++
++      IF (ALLOCATED(uHu_matrix)) DEALLOCATE(uHu_matrix)
++      IF (IO%IU6>=0.AND.WRITE_UIU) CLOSE(991)
++      IF (IO%IU0>=0.AND.WRITE_UIU) WRITE(IO%IU0,*) "*            UIU written.               *"
++      ENDIF
++      ! 2022-05-31 CCX: end uIu output
 +
  
        ! and last but not least we may need to write UNK files
        ! which is a bit tricky since the bands at a certain k-point
-@@ -811,41 +1375,65 @@
+@@ -811,23 +1465,47 @@
        ! to make matters worse, WANNIER90 works with the full k-mesh
        ! whereas VASP uses the symmetry reduced one.
   100  FORMAT('UNK',I5.5,'.',I1)
@@ -1042,10 +1011,10 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
           ENDDO
 +      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*            UNK written.               *"
        ENDIF
-+      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*---------------------------------------*"
- 
+-
 -      ENDDO spin
--   
++      IF (IO%IU0>=0) WRITE(IO%IU0,*) "*---------------------------------------*"
+    
        ! Write information on seed_name.win
        IF (IO%IU6>=0) THEN
 +         IF ((.NOT. spinors) .AND. (WDES%ISPIN==2)) THEN
@@ -1054,42 +1023,11 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +!            OPEN(UNIT=99,FILE=seed_name//'.win',STATUS='OLD')
 +         ELSE
           OPEN(UNIT=99,FILE=seed_name//'.win',STATUS='OLD')
--         
 +         ENDIF
-+
+          
           IF (spinors) THEN
              CALL OCCURS_IN_FILE(99,'spinors',N)
-             IF (N==0) THEN
-                WRITE(99,'(/A)') 'spinors = .true.'
-             ELSE
-                WRITE(*,'(A,/A/)') 'MLWF_WANNIER90: WARNING: '//seed_name//'.win seems to contains', &
--              &                  'the SPINORS tag, I hope it applies to the current setup ...'            
-+              &                  'the SPINORS tag, I hope it applies to the current setup ...'
-             ENDIF
-          ENDIF
--             
-+
-          CALL OCCURS_IN_FILE(99,'unit_cell_cart',N)
-          IF (N==0) THEN
-             WRITE(99,'(/A)') 'begin unit_cell_cart'
-             WRITE(99,'(3F14.7)') real_lattice(1,:)
-             WRITE(99,'(3F14.7)') real_lattice(2,:)
-             WRITE(99,'(3F14.7)') real_lattice(3,:)
--            WRITE(99,'(A)')  'end unit_cell_cart'            
-+            WRITE(99,'(A)')  'end unit_cell_cart'
-          ELSE
-             WRITE(*,'(A,/A/)') 'MLWF_WANNIER90: WARNING: '//seed_name//'.win seems to contains', &
-            &                  'a UNIT_CELL_CART block already, I hope it applies to the current setup ...'
-@@ -862,7 +1450,7 @@
-                WRITE(99,'(A)')  'end atoms_cart'
-             ELSE
-                WRITE(*,'(A,/A/)') 'MLWF_WANNIER90: WARNING: '//seed_name//'.win seems to contains', &
--              &                  'a ATOMS_CART block already, I hope it applies to the current setup ...'              
-+              &                  'a ATOMS_CART block already, I hope it applies to the current setup ...'
-             ENDIF
-          ELSE
-             WRITE(*,'(A,/A/)') 'MLWF_WANNIER90: WARNING: '//seed_name//'.win seems to contains', &
-@@ -919,9 +1507,9 @@
+@@ -919,9 +1597,9 @@
                &                 U_matrix(:,:,:,1),U_matrix_opt(:,:,:,1),lwindow(:,:,1), &
                &                 wann_centres(:,:,1),wann_spreads(:,1),spread(:,1))
             ELSE
@@ -1101,7 +1039,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
                 ! run wannier90 for spin component ISP
                 CALL wannier_run(seed_name//'.'//SP(ISP), &
-@@ -932,7 +1520,7 @@
+@@ -932,7 +1610,7 @@
                &                 U_matrix(:,:,:,ISP),U_matrix_opt(:,:,:,ISP),lwindow(:,:,ISP), &
                &                 wann_centres(:,:,ISP),wann_spreads(:,ISP),spread(:,ISP))
  
@@ -1110,14 +1048,8 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
              ENDIF
           ENDIF
  #endif
-@@ -951,17 +1539,25 @@
-          !possibly write UWAN files
-          IF (LWRITE_WANPROJ .AND. IO%IU6>=0) THEN
-             WRITE(IO%IU0,*)' Writing '//WANPROJFILE//' file'
--            CALL WRITE_WANPROJ_FILE(WDES)                  
--         ENDIF 
-+            CALL WRITE_WANPROJ_FILE(WDES)
-+         ENDIF
+@@ -955,13 +1633,21 @@
+          ENDIF 
        ENDIF
  
 -      DEALLOCATE(atom_symbols,atoms_cart)
@@ -1139,380 +1071,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
        IF (ASSOCIATED(R%R)) THEN
           DEALLOCATE(R%R); NULLIFY(R%R)
        ENDIF
-@@ -974,7 +1570,7 @@
- 
- 
- !******************** SUBROUTINE MLWF_ROTATE_ORBITALS ******************
--! 
-+!
- !***********************************************************************
-       SUBROUTINE MLWF_ROTATE_ORBITALS( &
-      &   WDES,W,KPOINTS,GRID,T_INFO,P,NONL_S,SYMM,LATT_CUR,IO)
-@@ -1010,8 +1606,8 @@
-          CALL KPAR_SYNC_ALL(WDES,W)
-          CALL RE_GEN_LAYOUT( GRID, WDES, KPOINTS, LATT_CUR, LATT_CUR,-1, IO%IU0)
-          CALL REALLOCATE_WAVE( W, GRID, WDES, NONL_S, T_INFO, P, LATT_CUR)
--      ENDIF     
--      
-+      ENDIF
-+
-       CALL MLWF_ROTATE_ORBITALS_FULLK(WDES,W)
- 
-       RETURN
-@@ -1019,7 +1615,7 @@
- 
- 
- !******************** SUBROUTINE MLWF_ROTATE_ORBITALS_FULLK ************
--! 
-+!
- !***********************************************************************
-       SUBROUTINE MLWF_ROTATE_ORBITALS_FULLK(WDES,W)
-       USE dfast
-@@ -1035,7 +1631,7 @@
-       INTEGER ISP,NK,NKP,NW,NB,NBEXCL,NBwin
-       COMPLEX(q) CTMP
-       GDEF, ALLOCATABLE :: U(:,:)
-- 
-+
-       CALL CHECK_FULL_KPOINTS
- 
-       IF ((.NOT.ALLOCATED(U_matrix)).OR.(.NOT.ALLOCATED(U_matrix_opt))) THEN
-@@ -1056,7 +1652,7 @@
-       ENDDO
-       IF ((NB+NBEXCL)/=WDES%NB_TOT) THEN
-          WRITE(*,*) 'MLWF_ROTATE_ORBITALS_FULLK: ERROR: inconsistent number of bands:', &
--        &   NB+NBEXCL,WDES%NB_TOT 
-+        &   NB+NBEXCL,WDES%NB_TOT
-       ENDIF
- 
-       ALLOCATE(U(WDES%NB_TOT,WDES%NB_TOT))
-@@ -1066,7 +1662,7 @@
-             ! find the corresponding entry in KPOINTS_FULL_ORIG, that contains
-             ! the set of k-points used in the computation of the rotation matrices
-             DO NKP=1,KPOINTS_FULL_ORIG%NKPTS
--               IF (LIDENTICAL_KPOINT(KPOINTS_FULL%VKPT(:,NK),KPOINTS_FULL_ORIG%VKPT(:,NKP))) exit 
-+               IF (LIDENTICAL_KPOINT(KPOINTS_FULL%VKPT(:,NK),KPOINTS_FULL_ORIG%VKPT(:,NKP))) exit
-             ENDDO
-             IF (NKP>KPOINTS_FULL_ORIG%NKPTS) THEN
-                WRITE(*,*) 'MLWF_ROTATE_ORBITALS_FULLK: ERROR: no matching k-point found in KPOINTS_FULL_ORIG',NK
-@@ -1116,10 +1712,10 @@
- 
-       RETURN
-       END SUBROUTINE MLWF_ROTATE_ORBITALS_FULLK
-- 
-+
- 
- !******************** SUBROUTINE MLWF_ROTATE_ORBITALS_NOSYMM ***********
--! 
-+!
- !***********************************************************************
-       SUBROUTINE MLWF_ROTATE_ORBITALS_NOSYMM(WDES,W)
-       USE dfast
-@@ -1135,7 +1731,7 @@
-       INTEGER ISP,NK,NKP,NW,NB,NBEXCL,NBwin
-       COMPLEX(q) CTMP
-       GDEF, ALLOCATABLE :: U(:,:)
-- 
-+
-       CALL CHECK_FULL_KPOINTS
- 
-       IF ((.NOT.ALLOCATED(U_matrix)).OR.(.NOT.ALLOCATED(U_matrix_opt))) THEN
-@@ -1156,7 +1752,7 @@
-       ENDDO
-       IF ((NB+NBEXCL)/=WDES%NB_TOT) THEN
-          WRITE(*,*) 'MLWF_ROTATE_ORBITALS_NOSYMM: ERROR: inconsistent number of bands:', &
--        &   NB+NBEXCL,WDES%NB_TOT 
-+        &   NB+NBEXCL,WDES%NB_TOT
-       ENDIF
- 
-       ALLOCATE(U(WDES%NB_TOT,WDES%NB_TOT))
-@@ -1169,7 +1765,7 @@
-             ! find the corresponding entry in KPOINTS_FULL, that contains
-             ! the set of k-points used in the computation of the rotation matrices
-             DO NKP=1,KPOINTS_FULL%NKPTS
--               IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),KPOINTS_FULL%VKPT(:,NKP))) exit 
-+               IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),KPOINTS_FULL%VKPT(:,NKP))) exit
-             ENDDO
-             IF (NKP>KPOINTS_FULL%NKPTS) THEN
-                WRITE(*,*) 'MLWF_ROTATE_ORBITALS: ERROR: no matching k-point found in KPOINTS_FULL',NK
-@@ -1294,7 +1890,7 @@
-       INTEGER ISP,IK,NK,IB,ISPINOR,IBG
-       INTEGER IDIR,J,IDELTA,IORDER,ISGN
-       REAL(q) K0(3),K(3),DK(3),KP(3)
--      COMPLEX(q), ALLOCATABLE :: CPHASE(:) 
-+      COMPLEX(q), ALLOCATABLE :: CPHASE(:)
-       LOGICAL LPHASE
- 
-       IORDER=4
-@@ -1332,7 +1928,7 @@
-                IF(IBG>MLWF_num_wann) EXIT
- #endif
- 
--               CALL W1_COPY(ELEMENT(W,WDESK,IB,ISP),WK) 
-+               CALL W1_COPY(ELEMENT(W,WDESK,IB,ISP),WK)
-                CALL FFTWAV_W1(WK)
- 
-                IF (LPHASE) CALL APPLY_PHASE(WDESK%GRID,CPHASE,WK%CR,WK%CR)
-@@ -1356,7 +1952,7 @@
-          ENDDO dir
- 
-       ENDDO kpoint
--      ENDDO spin 
-+      ENDDO spin
- 
-       RETURN
-       END SUBROUTINE MLWF_DPSI_DK
-@@ -1368,11 +1964,11 @@
- ! YLM(:,1)     -> s
- ! YLM(:,2:4)   -> p:= y, z, x
- ! YLM(:,5:9)   -> d:= xy, yz, z2, xz, x2
--! YLM(:,10:16) -> f:= y(3x2-y2), xyz, yz2, z3, xz2, z(x2-y2), x(x2-3y2)           
-+! YLM(:,10:16) -> f:= y(3x2-y2), xyz, yz2, z3, xz2, z(x2-y2), x(x2-3y2)
- !
- ! This routine provides a translation between the aforementioned and
- ! the orbital definitions used in wannier90
--! 
-+!
- !***********************************************************************
-       SUBROUTINE WANNIER90_ORBITAL_DEFINITIONS( &
-      &   L,M,HYBRID_ORBITAL &
-@@ -1381,16 +1977,16 @@
-       INTEGER L,M
-       REAL(q) HYBRID_ORBITAL(:)
-       ! local variables
--      
-+
-       ! we should be able to deal with anything up to and including L=3
-       IF (SIZE(HYBRID_ORBITAL)<16) THEN
-          WRITE(*,*) 'WANNIER90_ORBITAL_DEFINITIONS: ERROR: HYBRID_ORBITAL array too small', &
-         &   SIZE(HYBRID_ORBITAL)
-          STOP
-       ENDIF
--      
-+
-       HYBRID_ORBITAL=0
--      
-+
-       SELECT CASE(L)
-          CASE(0)
-             ! s-function
-@@ -1578,15 +2174,15 @@
-             WRITE(*,'(A,I2,A,I2,A)')  &
-            &   'WANNIER90_ORBITAL_DEFINITIONS: ERROR: L=',L,' M=',M,' not implemented'
-             STOP
--         
-+
-       END SELECT
--      
-+
-       RETURN
-       END SUBROUTINE WANNIER90_ORBITAL_DEFINITIONS
- 
- 
- !******************** SUBROUTINE SETROTYLM *****************************
--!           
-+!
- !***********************************************************************
-       SUBROUTINE SETROTYLM( &
-      & XIN,ZIN,LMAX,ROTYLM &
-@@ -1610,7 +2206,7 @@
-       REAL(q), ALLOCATABLE :: YLM(:,:),YLMP(:,:)
-       REAL(q), ALLOCATABLE :: WEIGHT(:),ABSCIS(:)
-       EXTERNAL GAUSSI2
--      
-+
-       X=XIN; Z=ZIN
- 
-       LMMAX=(LMAX+1)**2
-@@ -1633,7 +2229,7 @@
-       XDOTZ=X(1)*Z(1)+X(2)*Z(2)+X(3)*Z(3)
-       IF (ABS(XDOTZ)>TINY) THEN
-          WRITE(*,*) 'SETROTYLM: ERROR: X and Z are not orthogonal (enough):',ABS(XDOTZ)
--         STOP         
-+         STOP
-       ENDIF
-       ! y=Z \times X
-       Y(1)=(Z(2)*X(3)-X(2)*Z(3))
-@@ -1646,13 +2242,13 @@
- !     WRITE(*,'(3F10.5)') U(1,:)
- !     WRITE(*,'(3F10.5)') U(2,:)
- !     WRITE(*,'(3F10.5)') U(3,:)
--! test      
-+! test
-       SCALE=2*SQRT(PI) ! 1/Y00
- 
- !========================================================================
- ! number of theta and phi pivot points to perform angular integration
--! since Exc=f(a*Yllmax,m) we need more pivot points than theoretically 
--! needed to integrate Yllmax,m. 
-+! since Exc=f(a*Yllmax,m) we need more pivot points than theoretically
-+! needed to integrate Yllmax,m.
- ! the factor 2 is the minium, 3 is more accurate
- !========================================================================
-       PHPTS=3*(LMAX+1)
-@@ -1660,9 +2256,9 @@
-       NPTS=PHPTS*THPTS
-       DELTAPHI=REAL(2_q*PI/PHPTS,KIND=q)
-       ! allocate arrays
--      ALLOCATE(XYZPTS(NPTS,3),UXYZPTS(NPTS,3),RADPTS(NPTS,2),WEIGHT(THPTS),ABSCIS(THPTS), & 
-+      ALLOCATE(XYZPTS(NPTS,3),UXYZPTS(NPTS,3),RADPTS(NPTS,2),WEIGHT(THPTS),ABSCIS(THPTS), &
-      &     YLM(NPTS,LMMAX),YLMP(NPTS,LMMAX))
--      
-+
-       ! set phi positions, equally spaced
-       RADPTS=0; WEIGHT=0; ABSCIS=0
-       DO I=1,PHPTS
-@@ -1689,9 +2285,9 @@
-       DO I=1,NPTS
-          UXYZPTS(I,1)=U(1,1)*XYZPTS(I,1)+U(1,2)*XYZPTS(I,2)+U(1,3)*XYZPTS(I,3)
-          UXYZPTS(I,2)=U(2,1)*XYZPTS(I,1)+U(2,2)*XYZPTS(I,2)+U(2,3)*XYZPTS(I,3)
--         UXYZPTS(I,3)=U(3,1)*XYZPTS(I,1)+U(3,2)*XYZPTS(I,2)+U(3,3)*XYZPTS(I,3)         
-+         UXYZPTS(I,3)=U(3,1)*XYZPTS(I,1)+U(3,2)*XYZPTS(I,2)+U(3,3)*XYZPTS(I,3)
-       ENDDO
--      
-+
-       YLMP=0
-       CALL SETYLM(LMAX,NPTS,YLMP,UXYZPTS(:,1),UXYZPTS(:,2),UXYZPTS(:,3))
- 
-@@ -1707,7 +2303,7 @@
-             ROTYLM(LMP,LM)=ROTYLM(LMP,LM)+YLMP(NP,LMP)*YLM(NP,LM)*SIM_FAKT
-          ENDDO
-          ENDDO
--         
-+
-       ENDDO points
- 
-       DEALLOCATE(XYZPTS,UXYZPTS,RADPTS,WEIGHT,ABSCIS,YLM,YLMP)
-@@ -1716,7 +2312,7 @@
- 
- 
- !******************** SUBROUTINE SETRGRID ******************************
--!      
-+!
- !***********************************************************************
-       SUBROUTINE SETRGRID( &
-      & RSTART,REND,H,R &
-@@ -1727,9 +2323,9 @@
-       REAL(q) RSTART,REND,H
-       ! local variables
-       INTEGER I
--      
-+
-       I=0
--      DO 
-+      DO
-         I=I+1
-         IF (RSTART*EXP(H*(I-1))>=REND) EXIT
-       ENDDO
-@@ -1743,7 +2339,7 @@
-       ALLOCATE(R%R(I))
-       DO I=1,R%NMAX
-          R%R(I)=R%RSTART*EXP(H*(I-1))
--      ENDDO      
-+      ENDDO
-       R%REND=R%R(R%NMAX)
- 
-       IF (ASSOCIATED(R%SI)) THEN
-@@ -1756,7 +2352,7 @@
- 
- 
- !******************** SUBROUTINE RADIAL_FUNCTION ***********************
--!      
-+!
- !***********************************************************************
-       SUBROUTINE RADIAL_FUNCTION( &
-      & ITYP,R,ZA,FR &
-@@ -1770,7 +2366,7 @@
- 
-       IF (SIZE(FR)<R%NMAX) THEN
-          WRITE(*,*) 'RADIAL_FUNCTION: ERROR: FR too small:',SIZE(FR),R%NMAX
--      ENDIF      
-+      ENDIF
-       IF (ITYP==1) THEN
-          FR(:)=2._q*ZA**(3._q/2._q)*EXP(-ZA*R%R(:))
-       ELSEIF (ITYP==2) THEN
-@@ -1781,13 +2377,13 @@
-       ELSE
-          WRITE(*,*) 'RADIAL_FUNCTION: TYPE does not exist',ITYP
-       ENDIF
--      
-+
-       RETURN
-       END SUBROUTINE RADIAL_FUNCTION
- 
- 
- !******************** SUBROUTINE CALC_OVERLAP_GN ***********************
--!      
-+!
- !***********************************************************************
-       SUBROUTINE CALC_OVERLAP_GN( &
-      &   L,FG,POS,W,K,ISP,ISPINOR,P,CQIJ,LATT_CUR,T_INFO,S &
-@@ -1811,25 +2407,25 @@
-       REAL(q) FG(:,:,:)
-       REAL(q) POS(3)
-       OVERLAP CQIJ(:,:,:,:)
--      GDEF S(W%WDES%NB_TOT,(L+1)**2)      
-+      GDEF S(W%WDES%NB_TOT,(L+1)**2)
-       ! local variables
-       TYPE(wavespin) WP
-       TYPE(wavefuna) WK,WRYlm
-       TYPE(wavedes1), TARGET :: WDESK
-       TYPE(nonl_struct) NONL_S
--            
-+
-       TYPE(rotation_handle), POINTER :: ROT_HANDLE
- 
-       GDEF C
-       REAL(q) WSCAL
-       INTEGER NK,NB,N,NYLM
--      
-+
-       WP=W
-       WP%WDES=>WDES_FULL_PEAD
--            
-+
-       CALL CHECK_FULL_KPOINTS
- 
--      NULLIFY(ROT_HANDLE)      
-+      NULLIFY(ROT_HANDLE)
- 
-       NYLM=(L+1)**2
- 
-@@ -1847,7 +2443,7 @@
- 
-       CALL NONL_ALLOC(NONL_S,T_INFO,P,WP%WDES,.FALSE.)
-       CALL SPHER(WP%WDES%GRID,NONL_S,P,WP%WDES,LATT_CUR,1,NK)
--      CALL PHASE(WP%WDES,NONL_S,NK)      
-+      CALL PHASE(WP%WDES,NONL_S,NK)
- 
-       CALL NEWWAVA(WRYlm,WDESK,NYLM)
-       WRYlm%CW=0
-@@ -1858,7 +2454,7 @@
-       ENDDO
- 
-       ! calculate overlap between Wk and WRYlm: < w_{m,k1} | S | RYlm >
--      S=0    
-+      S=0
-       DO NB=1,WP%WDES%NBANDS
-          DO N=1,NYLM
-             C=W1_DOT(ELEMENT(WK,NB),ELEMENT(WRYlm,N),CQIJ)
-@@ -1868,21 +2464,201 @@
-       ENDDO
- 
-       CALLMPI( M_sum_g(WDESK%COMM_INTER,S(1,1),WDESK%NB_TOT*NYLM) )
--      
--      ! some deallocation to be done      
-+
-+      ! some deallocation to be done
-       CALL DEALLOCATE_ROT_HANDLE(ROT_HANDLE)
- 
-       CALL DELWAVA(WRYlm)
--      IF (NK/=KPOINTS_FULL%NEQUIV(NK)) CALL DELWAVA(WK)      
-+      IF (NK/=KPOINTS_FULL%NEQUIV(NK)) CALL DELWAVA(WK)
- 
-       CALL NONL_DEALLOC(NONL_S)
--            
-+
+@@ -1880,6 +2566,186 @@
        RETURN
        END SUBROUTINE CALC_OVERLAP_GN
  
@@ -1698,35 +1257,8 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +
  
  !******************** SUBROUTINE CONSTRUCT_FUNCTION_RYlm ***************
--!      
-+!
- !***********************************************************************
-       SUBROUTINE CONSTRUCT_FUNCTION_RYlm( &
-      &   LMAX,F,LATT_CUR,POS,NONL_S,ISPINOR,WRYLM &
-@@ -1913,7 +2689,7 @@
- 
-       LMMAX=(LMAX+1)**2
- 
--      NPL=WRYLM%WDES1%NGVECTOR      
-+      NPL=WRYLM%WDES1%NGVECTOR
- 
-       IF (ISPINOR/=1.AND.(.NOT.WRYLM%WDES1%LNONCOLLINEAR)) THEN
-          WRITE(*,*) 'CONSTRUCT_FUNCTION_RYlm: ERROR: ISPINOR=',ISPINOR,' but LNONCOLLINEAR=.FALSE.'
-@@ -1926,7 +2702,7 @@
-       ! loop over all G-vectors in the basis at this k-point
-       DO IND=1,WRYLM%WDES1%NGVECTOR
-          N1=MOD(WRYLM%WDES1%IGX(IND)+WRYLM%WDES1%GRID%NGX,WRYLM%WDES1%GRID%NGX)+1
--         N2=MOD(WRYLM%WDES1%IGY(IND)+WRYLM%WDES1%GRID%NGY,WRYLM%WDES1%GRID%NGY)+1 
-+         N2=MOD(WRYLM%WDES1%IGY(IND)+WRYLM%WDES1%GRID%NGY,WRYLM%WDES1%GRID%NGY)+1
-          N3=MOD(WRYLM%WDES1%IGZ(IND)+WRYLM%WDES1%GRID%NGZ,WRYLM%WDES1%GRID%NGZ)+1
- 
-          G1=(WRYLM%WDES1%GRID%LPCTX(N1)+WRYLM%WDES1%VKPT(1))
-@@ -1985,15 +2761,133 @@
-       ENDDO
- 
-       DEALLOCATE(G,FG,XS,YS,ZS,CFAKTX,YLM)
--      
-+
+ !      
+@@ -1989,11 +2855,129 @@
        RETURN
        END SUBROUTINE CONSTRUCT_FUNCTION_RYlm
  
@@ -1850,26 +1382,23 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +      END SUBROUTINE CONSTRUCT_FUNCTION_RYlm_ALL
  
  !******************** SUBROUTINE WRITE_WAVE_FUNCTIONS ******************
--!      
-+!
+ !      
  !***********************************************************************
 -      SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,IU)
 +      SUBROUTINE WRITE_WAVE_FUNCTIONS(W,K,ISP,EXCLUDE_BAND,P,LATT_CUR,UNK_FMTED,REDUCE_UNK,IU)
        USE pead
        USE pseudo
        USE lattice
-@@ -2005,7 +2899,9 @@
-       TYPE(latt) LATT_CUR
+@@ -2006,6 +2990,8 @@
        INTEGER ISP,IU
        REAL(q) K(3)
--      LOGICAL EXCLUDE_BAND(W%WDES%NB_TOT) 
-+      LOGICAL EXCLUDE_BAND(W%WDES%NB_TOT)
+       LOGICAL EXCLUDE_BAND(W%WDES%NB_TOT) 
 +      LOGICAL UNK_FMTED
 +      LOGICAL REDUCE_UNK
       ! local variables
        TYPE(wavespin) WP
        TYPE(wavefuna) WK
-@@ -2014,11 +2910,14 @@
+@@ -2014,11 +3000,14 @@
  
        TYPE(rotation_handle), POINTER :: ROT_HANDLE
  
@@ -1885,7 +1414,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
        WP=W
        WP%WDES=>WDES_FULL_PEAD
-@@ -2047,9 +2946,16 @@
+@@ -2047,7 +3036,14 @@
           CALL NEWWAV(WCOLLECT(NB),WDESK,.TRUE.)
        ENDDO
  
@@ -1898,12 +1427,9 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
 +        IF (REDUCE_UNK) ALLOCATE(WVFN_RED((NGX+1)/2*(NGY+1)/2*(NGZ+1)/2))
 +      ENDIF
  
--      NWRITTEN=0 
-+      NWRITTEN=0
+       NWRITTEN=0 
  
-       DO NB=1,WDESK%NBANDS,NSTRIP
-          DO ISTRIP=NB,MIN(WDESK%NBANDS,NB+NSTRIP-1)
-@@ -2073,7 +2979,14 @@
+@@ -2073,7 +3069,14 @@
  #ifdef gammareal
                       WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NX+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
  #else
@@ -1918,7 +1444,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  #endif
                    ENDDO
                 ENDDO
-@@ -2086,7 +2999,14 @@
+@@ -2086,7 +3089,14 @@
  #ifdef gammareal
                       WVFN(IND)=REAL(WCOLLECT(ISTRIP)%CR(NZ+(NC-1)*WP%WDES%GRID%RL%NROW),KIND=q)
  #else
@@ -1933,7 +1459,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  #endif
                    ENDDO
                 ENDDO
-@@ -2094,13 +3014,84 @@
+@@ -2094,13 +3104,84 @@
                 WRITE(*,'(A)') 'WRITE_WAVE_FUNCTIONS: ERROR: W1 grid not set'
                 STOP
              ENDIF
@@ -1947,8 +1473,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
              ! write WVFN to file
  #ifdef MPI
--            IF (WP%WDES%COMM%NODE_ME==WP%WDES%COMM%IONODE) THEN 
-+            IF (WP%WDES%COMM%NODE_ME==WP%WDES%COMM%IONODE) THEN
+             IF (WP%WDES%COMM%NODE_ME==WP%WDES%COMM%IONODE) THEN 
  #endif
 +
 +            ! 2020-07-04 CCX: reduce UNK matrix, cannot just write it because Do loop will change binary format
@@ -2019,16 +1544,7 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  #ifdef MPI
              ENDIF
  #endif
-@@ -2108,7 +3099,7 @@
-          ENDDO
-       ENDDO
- 
--      ! some deallocation to be done      
-+      ! some deallocation to be done
-       CALL DEALLOCATE_ROT_HANDLE(ROT_HANDLE)
-       IF (NK/=KPOINTS_FULL%NEQUIV(NK)) CALL DELWAVA(WK)
-       DO NB=1,NSTRIP*WP%WDES%NB_PAR
-@@ -2116,13 +3107,14 @@
+@@ -2116,11 +3197,12 @@
        ENDDO
        DEALLOCATE(WSTRIP,WCOLLECT)
        DEALLOCATE(WVFN)
@@ -2040,205 +1556,16 @@ diff --color -ruN src/mlwf.F ../vasp.5.4.4.pl2.mod/src/mlwf.F
  
 -
  !******************** SUBROUTINE OCCURS_IN_FILE ************************
--!      
-+!
+ !      
  !***********************************************************************
-       SUBROUTINE OCCURS_IN_FILE(IUNIT,PATTERN,N)
-       IMPLICIT NONE
-@@ -2139,14 +3131,14 @@
-       WRITE(PATT,'(A20)') PATTERN
-       CALL STRIP(PATT,NN,'L')
-       CALL UPPER(PATT)
--     
--      N=0 
-+
-+      N=0
-       DO
-          READ(IUNIT,'(A)',ERR=100,END=100) BUFLIN
-          CALL UPPER(BUFLIN)
--         N=N+NOCCUR(BUFLIN,PATT,-1) 
--      ENDDO 
--    
-+         N=N+NOCCUR(BUFLIN,PATT,-1)
-+      ENDDO
-+
-  100  CONTINUE
-       BACKSPACE(IUNIT)
-       RETURN
-@@ -2154,7 +3146,7 @@
- 
- 
- !******************** SUBROUTINE COPYFILE ******************************
--!      
-+!
- !***********************************************************************
-       SUBROUTINE COPYFILE(SRC,TRG)
-       IMPLICIT NONE
-@@ -2305,7 +3297,7 @@
-         ENDDO
-         IF ((NB+NBEXCL)/=WDES%NB_TOT) THEN
-            WRITE(*,*) 'MLWF_GET_ROTATION_MATRICES: ERROR: inconsistent number of bands:', &
--                &   NB+NBEXCL,WDES%NB_TOT 
-+                &   NB+NBEXCL,WDES%NB_TOT
-         ENDIF
- 
-         ALLOCATE(U(WDES%NB_TOT,WDES%NB_TOT,WDES%NKPTS,WDES%ISPIN))
-@@ -2316,7 +3308,7 @@
-               ! the set of k-points used in the computation of the rotation matrices
- 
-               DO NKP=1,KPOINTS_FULL%NKPTS
--                 IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),KPOINTS_FULL%VKPT(:,NKP))) exit 
-+                 IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),KPOINTS_FULL%VKPT(:,NKP))) exit
-               ENDDO
-               IF (NKP>KPOINTS_FULL%NKPTS) THEN
-                  WRITE(*,*) 'MLWF_GET_ROTATION_MATRICES: ERROR: no matching k-point found in KPOINTS_FULL',NK,WDES%VKPT(:,NK)
-@@ -2351,15 +3343,15 @@
-         ! < w_m |H| w_n > =: H
-         ! w_m = U_jm b_j
-         ! eps = eps_j delta_ij
--        ! 
-+        !
-         ! therefore:
-         ! H_mn = U*_jm U_in < b_j|H|b_i > = U*_jm U_in eps_j delta_ji = U*_jm U_jn eps_j
-         HAM=0
-         spin1: DO ISP=1,W%WDES%ISPIN
-            kpoint1: DO IK=1,WDES%NKPTS
--              
-+
-               DO B1=1,W%WDES%NB_TOTK(IK,ISP)
--                 DO B2=1,W%WDES%NB_TOTK(IK,ISP) 
-+                 DO B2=1,W%WDES%NB_TOTK(IK,ISP)
-                     DO IB=1,W%WDES%NB_TOTK(IK,ISP)
-                        HAM(B2,B1,IK,ISP)=HAM(B2,B1,IK,ISP)+GCONJG(U(IB,B2,IK,ISP))*W%CELTOT(IB,IK,ISP)*U(IB,B1,IK,ISP)
-                     END DO
-@@ -2395,19 +3387,19 @@
-         INTEGER ISP,IK,NK,IB,ISPINOR,B1,B2
-         INTEGER IDIR,J,IDELTA,IORDER,ISGN
-         REAL(q) K0(3),K(3),DK(3),KP(3)
--       
-+
-         ! calculate derivative of Hamiltonian at each k-point
-         IORDER=4
- 
-         DK(1)=1._q/REAL(KPOINTS_FULL%NKPX,KIND=q)
-         DK(2)=1._q/REAL(KPOINTS_FULL%NKPY,KIND=q)
-         DK(3)=1._q/REAL(KPOINTS_FULL%NKPZ,KIND=q)
--        
-+
-         DHAM=0
--        
-+
-         spin2: DO ISP=1,W%WDES%ISPIN
-            kpoint2: DO IK=1,KPOINTS%NKPTS
--              
-+
-               K0(:)=KPOINTS%VKPT(:,IK)
- 
-               dir: DO IDIR=1,3
-@@ -2417,24 +3409,24 @@
-                        K(IDIR)=K0(IDIR)+ISGN*IDELTA*DK(IDIR)
-                        NK=KPOINT_IN_FULL_GRID(K,KPOINTS_FULL)
-                        KP(:)=KPOINTS_FULL%VKPT(:,NK)
-- 
-+
-                        ! non-cartesian coordinates !!!
--                       DHAM(:,:,IK,ISP,IDIR)=DHAM(:,:,IK,ISP,IDIR)+CMPLX(ISGN*HAM(:,:,NK,ISP)*FAC(IDELTA,IORDER)/DK(IDIR)/TPI/2._q,KIND=q)                      
-+                       DHAM(:,:,IK,ISP,IDIR)=DHAM(:,:,IK,ISP,IDIR)+CMPLX(ISGN*HAM(:,:,NK,ISP)*FAC(IDELTA,IORDER)/DK(IDIR)/TPI/2._q,KIND=q)
-                        DO J=1,3
- !                          DHAM(:,:,IK,ISP,J)=DHAM(:,:,IK,ISP,J)+CMPLX(ISGN*LATT_CUR%A(J,IDIR)*HAM(:,:,NK,ISP)*FAC(IDELTA,IORDER)/DK(IDIR)/TPI/2._q,KIND=q)
-                           ! derivative w.r.t. to dimensionless coordinate
- !                          DHAM(:,:,IK,ISP,J)=DHAM(:,:,IK,ISP,J)+CMPLX(ISGN*HAM(:,:,NK,ISP)*FAC(IDELTA,IORDER)/DK(IDIR)/TPI/2._q,KIND=q)
--                          
-+
- 
-                        ENDDO
- 
-                     ENDDO sgn
-                  ENDDO delta
-               ENDDO dir
--              
-+
-            ENDDO kpoint2
-         ENDDO spin2
--        
-+
-         RETURN
-       END SUBROUTINE MLWF_DHAM_DK
- 
-@@ -2471,7 +3463,7 @@
-         ENDDO
-         IF ((NB+NBEXCL)/=WDES%NB_TOT) THEN
-            WRITE(*,*) 'MLWF_GET_ROTATION_MATRICES: ERROR: inconsistent number of bands:', &
--                &   NB+NBEXCL,WDES%NB_TOT 
-+                &   NB+NBEXCL,WDES%NB_TOT
-         ENDIF
- 
-         spin: DO ISP=1,WDES%ISPIN
-@@ -2480,7 +3472,7 @@
-               ! the set of k-points used in the computation of the rotation matrices
- 
-               DO NKP=1,KPOINTS_FULL%NKPTS
--                 IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),KPOINTS_FULL%VKPT(:,NKP))) exit 
-+                 IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),KPOINTS_FULL%VKPT(:,NKP))) exit
-               ENDDO
-               IF (NKP>KPOINTS_FULL%NKPTS) THEN
-                  WRITE(*,*) 'MLWF_GET_ROTATION_MATRICES: ERROR: no matching k-point found in KPOINTS_FULL',NK,WDES%VKPT(:,NK)
-@@ -2526,15 +3518,15 @@
-         ! < w_m |H| w_n > =: H
-         ! w_m = U_jm b_j
-         ! eps = eps_j delta_ij
--        ! 
-+        !
-         ! therefore:
-         ! H_mn = U*_jm U_in < b_j|H|b_i > = U*_jm U_in eps_j delta_ji = U*_jm U_jn eps_j
-         HAM=0
-         spin1: DO ISP=1,W%WDES%ISPIN
-            kpoint1: DO IK=1,WDES%NKPTS
--              
-+
-               DO B1=1,W%WDES%NB_TOTK(IK,ISP)
--                 DO B2=1,W%WDES%NB_TOTK(IK,ISP) 
-+                 DO B2=1,W%WDES%NB_TOTK(IK,ISP)
-                     DO IB=1,W%WDES%NB_TOTK(IK,ISP)
-                        HAM(B2,B1,IK,ISP)=HAM(B2,B1,IK,ISP)+GCONJG(U(IB,B2,IK,ISP))*W%CELTOT(IB,IK,ISP)*U(IB,B1,IK,ISP)
-                     END DO
-@@ -2550,7 +3542,7 @@
- !***********************************************************************
- 
-       SUBROUTINE WRITE_WANPROJ_FILE(WDES)
--         IMPLICIT NONE 
-+         IMPLICIT NONE
-          TYPE(wavedes) WDES
-          COMPLEX(q), ALLOCATABLE :: U(:,:)
-          INTEGER I,J,K,IP,IPP
-@@ -2571,8 +3563,8 @@
-          U=0
- 
-          OPEN(UNIT=99, FILE=WANPROJFILE, STATUS='REPLACE')
--            
--         WRITE(99,*)WDES%ISPIN,WDES%NKPTS,WDES%NB_TOT,NW  
-+
-+         WRITE(99,*)WDES%ISPIN,WDES%NKPTS,WDES%NB_TOT,NW
-          DO NK=1,WDES%NKPTS
-             WRITE(99,999)NK,WDES%VKPT(:,NK)
-          ENDDO
-@@ -2581,7 +3573,7 @@
-                ! find the corresponding entry in kpt_latt, that contains
-                ! the set of k-points used in the computation of the rotation matrices
-                DO NKP=1,SIZE(kpt_latt,2)
--                  IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),kpt_latt(:,NKP))) exit 
-+                  IF (LIDENTICAL_KPOINT(WDES%VKPT(:,NK),kpt_latt(:,NKP))) exit
-                ENDDO
-                IF (NKP>KPOINTS_FULL%NKPTS) THEN
-                   WRITE(*,*) &
-@@ -2632,4 +3624,3 @@
+@@ -2632,4 +3714,3 @@
  1001     FORMAT(2I6,2F26.16)
        ENDSUBROUTINE WRITE_WANPROJ_FILE
        END MODULE mlwf
 -
-diff --color -ruN src/wave_high.F ../vasp.5.4.4.pl2.mod/src/wave_high.F
+diff --color -bruN src/wave_high.F ../vasp.5.4.4.pl2.mod/src/wave_high.F
 --- src/wave_high.F	2019-11-04 13:45:35.000000000 +0000
-+++ ../vasp.5.4.4.pl2.mod/src/wave_high.F	2022-05-31 14:02:40.686954343 +0100
++++ ../vasp.5.4.4.pl2.mod/src/wave_high.F	2022-05-31 16:06:38.229685247 +0100
 @@ -53,6 +53,18 @@
       END SUBROUTINE ECCP_NL
    END INTERFACE

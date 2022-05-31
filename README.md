@@ -89,6 +89,10 @@ A list of useful keywords:
 |   LREDUCE_UNK  | Do we want the `UNK` files be reduced in size?  | TRUE/FALSE            | FALSE            |
 |   LWRITE_SPN   | Do we want the `.spn` files? (__Serial only__)  | TRUE/FALSE            | FALSE            |
 |   LSPN_FMTED   | Do we want the `.spn` files be human-readable?  | TRUE/FALSE            | FALSE            |
+|   LWRITE_UHU   | Do we want the `.uHu` files?                    | TRUE/FALSE            | FALSE            |
+|   LUHU_FMTED   | Do we want the `.uHu` files be human-readable?  | TRUE/FALSE            | FALSE            |
+|   LWRITE_UIU   | Do we want the `.uIu` files?                    | TRUE/FALSE            | FALSE            |
+|   LUIU_FMTED   | Do we want the `.uIu` files be human-readable?  | TRUE/FALSE            | FALSE            |
 
 ## How to cite
 Citation of the code is not mandatory but would be appreciated. A reference to this website using this [BibTeX entry](./vasp2wan90.bib) will suffice.
