@@ -50,6 +50,7 @@ Compare with Fig. 2 of [Ref](https://journals.aps.org/prb/pdf/10.1103/PhysRevB.8
 
 8. Comment out what we uncommented in step 7, then, uncomment the following in `wannier90.win` in `2-wannier_gen`:
 ```
+fermi_energy = 5.4021
 kslice = true
 kslice_task = morb+fermi_lines
 kslice_2dkmesh = 50 50
