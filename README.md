@@ -53,7 +53,6 @@ This project provides a patch for the [VASP](https://www.vasp.at/) code, fixing 
 
 For this patch to work, you have to __recompile VASP__.
 If you are not familiar with VASP's compilation process, click [:link: HERE](https://www.vasp.at/wiki/index.php/Installing_VASP.5.X.X).
-
 Also, you need a compiled `libwannier.a`.
 If you don't know what it is, check out wannier90's user guide.
 
