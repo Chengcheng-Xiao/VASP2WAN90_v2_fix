@@ -48,10 +48,10 @@ This project provides a patch for the [VASP](https://www.vasp.at/) code, fixing 
 
 ## Installation
 
-__THIS FIX ONLY WORKS WITH VASP v5.4.4.pl2__
+> [!IMPORTANT]
+> THIS FIX ONLY WORKS WITH VASP v5.4.4.pl2
 
-For this patch to work, you have to recompile VASP.
-
+For this patch to work, you have to __recompile VASP__.
 If you are not familiar with VASP's compilation process, click [:link: HERE](https://www.vasp.at/wiki/index.php/Installing_VASP.5.X.X).
 
 Also, you need a compiled `libwannier.a`.
